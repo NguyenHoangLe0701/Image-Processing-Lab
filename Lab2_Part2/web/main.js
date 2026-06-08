@@ -3,7 +3,6 @@ import './style.css';
 // === DOM ===
 const video = document.getElementById('videoInput');
 const canvas = document.getElementById('canvasOutput');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const overlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
 const blurSlider = document.getElementById('blurSlider');
@@ -14,7 +13,7 @@ const highThreshSlider = document.getElementById('highThreshSlider');
 let streaming = false;
 let mode = 'canny';
 let frontCam = true;
-let src, dst, gray, blurred;
+let cap, src, dst, gray, blurred;
 
 // =============================================
 // 1. Chờ OpenCV WASM khởi tạo xong
@@ -31,7 +30,7 @@ function waitForOpenCv() {
 waitForOpenCv();
 
 // =============================================
-// 2. Mở Camera (tự fallback nếu facingMode lỗi)
+// 2. Mở Camera
 // =============================================
 function openCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -39,29 +38,28 @@ function openCamera() {
     return;
   }
 
-  // Thử mở camera với facingMode (cho điện thoại)
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: frontCam ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-    audio: false
-  }).then(onCameraSuccess).catch(err => {
-    console.warn('facingMode failed, trying fallback:', err.message);
-    // Fallback: mở camera không cần facingMode (cho desktop)
-    navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 640 }, height: { ideal: 480 } },
-      audio: false
-    }).then(onCameraSuccess).catch(err2 => {
-      console.error('Camera error:', err2);
-      showError('Lỗi Camera: ' + err2.message);
-    });
-  });
+  const tryConstraints = [
+    { video: { facingMode: frontCam ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+    { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+    { video: true, audio: false }
+  ];
+
+  function tryNext(i) {
+    if (i >= tryConstraints.length) {
+      showError('Không tìm thấy Camera. Hãy kiểm tra thiết bị!');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia(tryConstraints[i])
+      .then(onCameraSuccess)
+      .catch(() => tryNext(i + 1));
+  }
+  tryNext(0);
 }
 
 function onCameraSuccess(stream) {
   video.srcObject = stream;
   video.play();
-  // Tự động kết nối lại nếu camera bị ngắt
   stream.getVideoTracks()[0].addEventListener('ended', () => {
-    console.log('Camera bị ngắt, đang kết nối lại...');
     streaming = false;
     freeMats();
     showLoading('Camera bị ngắt. Đang kết nối lại...');
@@ -88,29 +86,34 @@ function showLoading(msg) {
 }
 
 // =============================================
-// 3. Khi video thực sự phát -> bắt đầu xử lý
+// 3. Khi video phát -> bắt đầu xử lý
 // =============================================
 video.addEventListener('playing', () => {
   if (streaming) return;
-  waitForVideoDimensions();
+  waitDimensions();
 });
 
-function waitForVideoDimensions() {
+function waitDimensions() {
   if (video.videoWidth > 0 && video.videoHeight > 0) {
-    initProcessing(video.videoWidth, video.videoHeight);
+    startStream();
   } else {
-    setTimeout(waitForVideoDimensions, 50);
+    setTimeout(waitDimensions, 50);
   }
 }
 
-function initProcessing(w, h) {
+function startStream() {
   if (streaming) return;
+  const w = video.videoWidth, h = video.videoHeight;
   canvas.width = w;
   canvas.height = h;
+
+  // Dùng VideoCapture chính thức của OpenCV.js
+  cap = new cv.VideoCapture(video);
   src = new cv.Mat(h, w, cv.CV_8UC4);
   dst = new cv.Mat(h, w, cv.CV_8UC1);
-  gray = new cv.Mat(h, w, cv.CV_8UC1);
-  blurred = new cv.Mat(h, w, cv.CV_8UC1);
+  gray = new cv.Mat();
+  blurred = new cv.Mat();
+
   streaming = true;
   overlay.classList.add('hidden');
   console.log(`Streaming ${w}x${h}`);
@@ -118,34 +121,34 @@ function initProcessing(w, h) {
 }
 
 // =============================================
-// 4. Vòng lặp xử lý ảnh (mỗi frame)
+// 4. Vòng lặp xử lý ảnh
 // =============================================
 function tick() {
   if (!streaming) return;
 
   try {
     if (video.readyState >= 2) {
-      // Đọc frame từ video vào Ma trận OpenCV
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      src.data.set(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
+      // Đọc frame bằng VideoCapture (cách chính thức OpenCV.js)
+      cap.read(src);
 
       if (mode === 'canny') {
         // Bước 1: Chuyển sang ảnh xám
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
 
-        // Bước 2: Làm mờ Gaussian
+        // Bước 2: Làm mờ Gaussian (giảm nhiễu)
         let k = parseInt(blurSlider.value);
         if (k % 2 === 0) k++;
         let ksize = new cv.Size(k, k);
         cv.GaussianBlur(gray, blurred, ksize, 0, 0, cv.BORDER_DEFAULT);
         ksize.delete();
 
-        // Bước 3: Canny Edge Detection
+        // Bước 3: Phát hiện biên Canny
         cv.Canny(blurred, dst, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
 
         // Hiển thị kết quả
         cv.imshow('canvasOutput', dst);
       } else {
+        // Hiển thị ảnh gốc
         cv.imshow('canvasOutput', src);
       }
     }
@@ -157,11 +160,16 @@ function tick() {
 }
 
 // =============================================
-// 5. Xóa bộ nhớ OpenCV
+// 5. Giải phóng bộ nhớ
 // =============================================
 function freeMats() {
-  if (src) { src.delete(); dst.delete(); gray.delete(); blurred.delete(); }
-  src = dst = gray = blurred = null;
+  try {
+    if (src) src.delete();
+    if (dst) dst.delete();
+    if (gray) gray.delete();
+    if (blurred) blurred.delete();
+  } catch (e) { /* ignore */ }
+  cap = src = dst = gray = blurred = null;
 }
 
 // =============================================
