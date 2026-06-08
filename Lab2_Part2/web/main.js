@@ -44,7 +44,22 @@ function openCamera() {
   }).then(stream => {
     video.srcObject = stream;
     video.play();
-  }).catch(() => showError('Không thể truy cập Camera. Hãy cấp quyền Camera!'));
+
+    // Tự động kết nối lại nếu camera bị ngắt bất ngờ
+    stream.getVideoTracks()[0].addEventListener('ended', () => {
+      console.log('Camera bị ngắt, đang kết nối lại...');
+      streaming = false;
+      freeMats();
+      overlay.classList.remove('hidden');
+      document.querySelector('.spinner').style.display = 'block';
+      loadingText.innerText = 'Camera bị ngắt. Đang kết nối lại...';
+      loadingText.style.color = '';
+      setTimeout(openCamera, 1000);
+    });
+  }).catch(err => {
+    console.error('Camera error:', err);
+    showError('Lỗi Camera: ' + err.message);
+  });
 }
 
 function closeCamera() {
