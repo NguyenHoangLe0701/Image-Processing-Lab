@@ -1,8 +1,7 @@
 import './style.css';
 
-// === DOM Elements ===
+// === DOM ===
 const overlay = document.getElementById('loadingOverlay');
-const loadingText = document.getElementById('loadingText');
 const uploadSection = document.getElementById('uploadSection');
 const resultSection = document.getElementById('resultSection');
 const dropZone = document.getElementById('dropZone');
@@ -13,8 +12,11 @@ const canvasCanny = document.getElementById('canvasCanny');
 const blurSlider = document.getElementById('blurSlider');
 const lowThreshSlider = document.getElementById('lowThreshSlider');
 const highThreshSlider = document.getElementById('highThreshSlider');
+const modeOriginal = document.getElementById('modeOriginal');
+const modeCanny = document.getElementById('modeCanny');
 
-let originalMat = null; // Ảnh gốc lưu dưới dạng cv.Mat
+let originalMat = null;
+let mode = 'canny'; // 'original' hoặc 'canny'
 
 // =============================================
 // 1. Chờ OpenCV.js sẵn sàng
@@ -32,8 +34,6 @@ waitForOpenCv();
 // =============================================
 // 2. Nhận ảnh đầu vào
 // =============================================
-
-// Chọn ảnh từ thiết bị
 document.getElementById('uploadBtn').addEventListener('click', e => {
   e.preventDefault();
   fileInput.click();
@@ -42,17 +42,13 @@ fileInput.addEventListener('change', e => {
   if (e.target.files[0]) loadImage(e.target.files[0]);
 });
 
-// Chụp ảnh bằng camera
 document.getElementById('captureBtn').addEventListener('click', () => cameraInput.click());
 cameraInput.addEventListener('change', e => {
   if (e.target.files[0]) loadImage(e.target.files[0]);
 });
 
-// Kéo thả ảnh (drag & drop)
-dropZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  dropZone.classList.add('dragover');
-});
+// Kéo thả
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', e => {
   e.preventDefault();
@@ -70,7 +66,7 @@ document.getElementById('changeImageBtn').addEventListener('click', () => {
   cameraInput.value = '';
 });
 
-// Reset tham số về mặc định
+// Reset tham số
 document.getElementById('resetBtn').addEventListener('click', () => {
   blurSlider.value = 5;
   lowThreshSlider.value = 50;
@@ -81,7 +77,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   applyCanny();
 });
 
-// Tải kết quả Canny
+// Tải kết quả
 document.getElementById('downloadBtn').addEventListener('click', () => {
   const link = document.createElement('a');
   link.download = 'canny_result.png';
@@ -90,14 +86,33 @@ document.getElementById('downloadBtn').addEventListener('click', () => {
 });
 
 // =============================================
-// 3. Đọc ảnh và hiển thị
+// 3. Chuyển đổi mode Ảnh gốc / Canny
+// =============================================
+modeOriginal.addEventListener('click', () => {
+  mode = 'original';
+  modeOriginal.classList.add('active');
+  modeCanny.classList.remove('active');
+  canvasOriginal.style.display = 'block';
+  canvasCanny.style.display = 'none';
+});
+
+modeCanny.addEventListener('click', () => {
+  mode = 'canny';
+  modeCanny.classList.add('active');
+  modeOriginal.classList.remove('active');
+  canvasOriginal.style.display = 'none';
+  canvasCanny.style.display = 'block';
+});
+
+// =============================================
+// 4. Đọc ảnh và hiển thị
 // =============================================
 function loadImage(file) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const img = new Image();
     img.onload = function () {
-      // Giới hạn kích thước để chạy mượt trên mobile
+      // Giới hạn kích thước tối đa
       let w = img.width, h = img.height;
       const MAX = 800;
       if (w > MAX || h > MAX) {
@@ -105,18 +120,32 @@ function loadImage(file) {
         else { w = Math.round(w * MAX / h); h = MAX; }
       }
 
-      // Vẽ ảnh gốc lên canvas
+      // Vẽ ảnh gốc
       canvasOriginal.width = w;
       canvasOriginal.height = h;
-      canvasOriginal.getContext('2d').drawImage(img, 0, 0, w, h);
+      const ctx = canvasOriginal.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
 
-      // Đọc pixel vào cv.Mat
+      // Đọc pixel vào OpenCV Mat (cách thủ công - chắc chắn hoạt động)
+      const imageData = ctx.getImageData(0, 0, w, h);
       if (originalMat) originalMat.delete();
-      originalMat = cv.imread(canvasOriginal);
+      originalMat = new cv.Mat(h, w, cv.CV_8UC4);
+      originalMat.data.set(imageData.data);
 
-      // Chuyển sang màn hình kết quả
+      // Setup canvas Canny cùng kích thước
+      canvasCanny.width = w;
+      canvasCanny.height = h;
+
+      // Hiện kết quả
       uploadSection.classList.add('hidden');
       resultSection.classList.remove('hidden');
+
+      // Đặt mode về Canny
+      mode = 'canny';
+      modeCanny.classList.add('active');
+      modeOriginal.classList.remove('active');
+      canvasOriginal.style.display = 'none';
+      canvasCanny.style.display = 'block';
 
       // Chạy Canny
       applyCanny();
@@ -127,48 +156,43 @@ function loadImage(file) {
 }
 
 // =============================================
-// 4. Thuật toán Canny
+// 5. Thuật toán Canny
 // =============================================
 function applyCanny() {
-  if (!originalMat) return;
+  if (!originalMat || originalMat.empty()) return;
 
-  // Tạo Mat tạm
   let gray = new cv.Mat();
   let blurred = new cv.Mat();
   let edges = new cv.Mat();
 
   try {
-    // Bước 1: Chuyển sang ảnh xám (Grayscale)
+    // Bước 1: Grayscale
     cv.cvtColor(originalMat, gray, cv.COLOR_RGBA2GRAY, 0);
 
-    // Bước 2: Gaussian Blur – giảm nhiễu
+    // Bước 2: Gaussian Blur
     let k = parseInt(blurSlider.value);
     if (k % 2 === 0) k++;
     let ksize = new cv.Size(k, k);
     cv.GaussianBlur(gray, blurred, ksize, 0, 0, cv.BORDER_DEFAULT);
     ksize.delete();
 
-    // Bước 3: Canny Edge Detection
-    let tLow = parseInt(lowThreshSlider.value);
-    let tHigh = parseInt(highThreshSlider.value);
-    cv.Canny(blurred, edges, tLow, tHigh, 3, false);
+    // Bước 3: Canny
+    cv.Canny(blurred, edges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
 
-    // Hiển thị kết quả
-    canvasCanny.width = edges.cols;
-    canvasCanny.height = edges.rows;
+    // Hiển thị
     cv.imshow('canvasCanny', edges);
   } catch (e) {
     console.error('Canny error:', e);
+    document.title = 'ERR: ' + e.message;
   }
 
-  // Giải phóng bộ nhớ
   gray.delete();
   blurred.delete();
   edges.delete();
 }
 
 // =============================================
-// 5. Cập nhật khi kéo thanh trượt
+// 6. Cập nhật khi kéo thanh trượt
 // =============================================
 blurSlider.addEventListener('input', e => {
   document.getElementById('blurVal').innerText = e.target.value;

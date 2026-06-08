@@ -91,15 +91,23 @@
           </div>
         </div>
 
-        <!-- Image Comparison -->
-        <div id="imageGrid">
+        <!-- Mode Toggle -->
+        <div id="modeToggle">
+          <button class="mode-btn" id="modeOriginal">
+            <i class="fa-solid fa-image"></i> Ảnh gốc
+          </button>
+          <button class="mode-btn active" id="modeCanny">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Bắt cạnh (Canny)
+          </button>
+        </div>
+
+        <!-- Image Display -->
+        <div id="imageDisplay">
           <div class="image-card">
-            <div class="card-header"><i class="fa-solid fa-image"></i> Ảnh gốc</div>
-            <div class="card-body"><canvas id="canvasOriginal"></canvas></div>
-          </div>
-          <div class="image-card accent">
-            <div class="card-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Canny Edge</div>
-            <div class="card-body"><canvas id="canvasCanny"></canvas></div>
+            <div class="card-body">
+              <canvas id="canvasOriginal"></canvas>
+              <canvas id="canvasCanny"></canvas>
+            </div>
           </div>
         </div>
 
