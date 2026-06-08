@@ -34,13 +34,31 @@ let dst = null;
 let gray = null;
 let blurred = null;
 
-// Ensure OpenCV is ready globally (called from index.html script tag onload)
-window.onOpenCvReady = function () {
-  console.log("OpenCV.js is ready.");
-  cvReady = true;
-  loadingText.innerText = "Đang khởi động Camera...";
-  initCamera();
-};
+// Chờ OpenCV.js tải xong bằng cơ chế polling (kiểm tra mỗi 100ms)
+// Cách này chống được lỗi Race Condition khi deploy lên Vercel
+function waitForOpenCv() {
+  if (typeof cv !== 'undefined') {
+    try {
+      // Thử tạo một Mat để xác nhận WebAssembly đã khởi tạo hoàn tất
+      let testMat = new cv.Mat();
+      testMat.delete();
+      
+      // OpenCV đã sẵn sàng!
+      console.log("OpenCV.js is ready.");
+      cvReady = true;
+      loadingText.innerText = "Đang khởi động Camera...";
+      initCamera();
+      return;
+    } catch (e) {
+      // WASM chưa khởi tạo xong, thử lại sau
+    }
+  }
+  // Kiểm tra lại sau 100ms
+  setTimeout(waitForOpenCv, 100);
+}
+
+// Bắt đầu kiểm tra ngay khi main.js chạy
+waitForOpenCv();
 
 // ==========================================
 // UI Event Listeners
