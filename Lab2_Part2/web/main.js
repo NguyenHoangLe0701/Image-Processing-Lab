@@ -110,8 +110,9 @@ function tick() {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       if (mode === 'canny') {
-        // Đọc pixel từ canvas vào Mat
-        let src = cv.imread(canvas);
+        // Đọc pixel từ canvas bằng matFromImageData (tường minh nhất)
+        let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let src = cv.matFromImageData(imgData);
         let gray = new cv.Mat();
         let blur = new cv.Mat();
         let edges = new cv.Mat();
@@ -127,15 +128,16 @@ function tick() {
 
         cv.Canny(blur, edges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
 
-        // Hiển thị kết quả lên canvas
+        // Hiển thị kết quả
         cv.imshow('canvasOutput', edges);
 
-        // Giải phóng bộ nhớ C++ NGAY LẬP TỨC
+        // Giải phóng bộ nhớ
         src.delete(); gray.delete(); blur.delete(); edges.delete();
       }
-      // mode 'original': canvas đã có video frame từ drawImage, không cần làm gì thêm
     }
   } catch (e) {
+    // HIỆN LỖI TRÊN MÀN HÌNH (để debug trên mobile)
+    document.title = 'ERR: ' + e.message;
     console.error('Frame error:', e);
   }
 
