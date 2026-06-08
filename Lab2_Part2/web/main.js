@@ -31,34 +31,41 @@ function waitForOpenCv() {
 waitForOpenCv();
 
 // =============================================
-// 2. Mở Camera
+// 2. Mở Camera (tự fallback nếu facingMode lỗi)
 // =============================================
 function openCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showError('Trình duyệt không hỗ trợ Camera hoặc chưa dùng HTTPS!');
     return;
   }
+
+  // Thử mở camera với facingMode (cho điện thoại)
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: frontCam ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
     audio: false
-  }).then(stream => {
-    video.srcObject = stream;
-    video.play();
-
-    // Tự động kết nối lại nếu camera bị ngắt bất ngờ
-    stream.getVideoTracks()[0].addEventListener('ended', () => {
-      console.log('Camera bị ngắt, đang kết nối lại...');
-      streaming = false;
-      freeMats();
-      overlay.classList.remove('hidden');
-      document.querySelector('.spinner').style.display = 'block';
-      loadingText.innerText = 'Camera bị ngắt. Đang kết nối lại...';
-      loadingText.style.color = '';
-      setTimeout(openCamera, 1000);
+  }).then(onCameraSuccess).catch(err => {
+    console.warn('facingMode failed, trying fallback:', err.message);
+    // Fallback: mở camera không cần facingMode (cho desktop)
+    navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    }).then(onCameraSuccess).catch(err2 => {
+      console.error('Camera error:', err2);
+      showError('Lỗi Camera: ' + err2.message);
     });
-  }).catch(err => {
-    console.error('Camera error:', err);
-    showError('Lỗi Camera: ' + err.message);
+  });
+}
+
+function onCameraSuccess(stream) {
+  video.srcObject = stream;
+  video.play();
+  // Tự động kết nối lại nếu camera bị ngắt
+  stream.getVideoTracks()[0].addEventListener('ended', () => {
+    console.log('Camera bị ngắt, đang kết nối lại...');
+    streaming = false;
+    freeMats();
+    showLoading('Camera bị ngắt. Đang kết nối lại...');
+    setTimeout(openCamera, 1000);
   });
 }
 
@@ -71,6 +78,13 @@ function showError(msg) {
   loadingText.innerText = msg;
   loadingText.style.color = '#ff4444';
   document.querySelector('.spinner').style.display = 'none';
+}
+
+function showLoading(msg) {
+  overlay.classList.remove('hidden');
+  document.querySelector('.spinner').style.display = 'block';
+  loadingText.innerText = msg;
+  loadingText.style.color = '';
 }
 
 // =============================================
@@ -111,17 +125,25 @@ function tick() {
 
   try {
     if (video.readyState >= 2) {
+      // Đọc frame từ video vào Ma trận OpenCV
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       src.data.set(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
 
       if (mode === 'canny') {
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+        // Bước 1: Chuyển sang ảnh xám
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+
+        // Bước 2: Làm mờ Gaussian
         let k = parseInt(blurSlider.value);
         if (k % 2 === 0) k++;
         let ksize = new cv.Size(k, k);
-        cv.GaussianBlur(gray, blurred, ksize, 0);
+        cv.GaussianBlur(gray, blurred, ksize, 0, 0, cv.BORDER_DEFAULT);
         ksize.delete();
-        cv.Canny(blurred, dst, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value));
+
+        // Bước 3: Canny Edge Detection
+        cv.Canny(blurred, dst, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
+
+        // Hiển thị kết quả
         cv.imshow('canvasOutput', dst);
       } else {
         cv.imshow('canvasOutput', src);
@@ -129,14 +151,13 @@ function tick() {
     }
   } catch (e) {
     console.error('Frame error:', e);
-    // Không dừng vòng lặp, tiếp tục frame tiếp theo
   }
 
   requestAnimationFrame(tick);
 }
 
 // =============================================
-// 5. Xóa bộ nhớ OpenCV (dùng khi đổi camera)
+// 5. Xóa bộ nhớ OpenCV
 // =============================================
 function freeMats() {
   if (src) { src.delete(); dst.delete(); gray.delete(); blurred.delete(); }
@@ -170,12 +191,8 @@ document.getElementById('switchCameraBtn').addEventListener('click', () => {
   closeCamera();
   streaming = false;
   freeMats();
-  overlay.classList.remove('hidden');
-  document.querySelector('.spinner').style.display = 'block';
-  loadingText.innerText = 'Đang chuyển Camera...';
-  loadingText.style.color = '';
+  showLoading('Đang chuyển Camera...');
   openCamera();
 });
 
-// Dọn dẹp khi đóng trang
 window.addEventListener('beforeunload', () => { closeCamera(); freeMats(); });
