@@ -98,9 +98,7 @@ modeCanny.addEventListener('click', () => {
   mode = 'canny';
   modeCanny.classList.add('active');
   modeOriginal.classList.remove('active');
-  if (currentEdges && !currentEdges.empty()) {
-    cv.imshow('canvasDisplay', currentEdges);
-  }
+  applyCanny(); // Luôn chạy lại để đảm bảo hiển thị đúng
 });
 
 // =============================================
@@ -126,11 +124,9 @@ function loadImage(file) {
       const ctx = hiddenCanvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
 
-      // Đọc vào OpenCV Mat
-      const imageData = ctx.getImageData(0, 0, w, h);
+      // Đọc vào OpenCV Mat bằng hàm imread chuẩn
       if (originalMat) originalMat.delete();
-      originalMat = new cv.Mat(h, w, cv.CV_8UC4);
-      originalMat.data.set(imageData.data);
+      originalMat = cv.imread(hiddenCanvas);
 
       // Hiện kết quả
       uploadSection.classList.add('hidden');
@@ -155,11 +151,14 @@ function loadImage(file) {
 function applyCanny() {
   if (!originalMat || originalMat.empty()) return;
 
-  if (currentEdges) currentEdges.delete();
-  currentEdges = new cv.Mat();
-
+  if (currentEdges) {
+    currentEdges.delete();
+    currentEdges = null;
+  }
+  
   let gray = new cv.Mat();
   let blurred = new cv.Mat();
+  currentEdges = new cv.Mat();
 
   try {
     // Bước 1: Grayscale
@@ -175,26 +174,30 @@ function applyCanny() {
     // Bước 3: Canny
     cv.Canny(blurred, currentEdges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
 
-    // Nếu đang ở mode Canny thì hiển thị kết quả luôn
+    // Nếu đang ở mode Canny thì hiển thị kết quả
     if (mode === 'canny') {
       cv.imshow('canvasDisplay', currentEdges);
     }
   } catch (e) {
     console.error('Canny error:', e);
     
-    // In lỗi trực tiếp lên Canvas để debug
+    // In lỗi trực tiếp lên Canvas để dễ debug
     const ctx = canvasDisplay.getContext('2d');
     canvasDisplay.width = originalMat.cols;
     canvasDisplay.height = originalMat.rows;
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
     ctx.fillStyle = '#ef4444';
-    ctx.font = '20px sans-serif';
-    ctx.fillText('Lỗi OpenCV: ' + e.message, 20, 50);
+    ctx.font = '20px Arial';
+    
+    // Đôi khi OpenCV.js quăng lỗi dạng số (pointer)
+    let msg = typeof e === 'number' ? 'Lỗi Pointer: ' + e : e.message;
+    ctx.fillText('Lỗi OpenCV: ' + msg, 20, 50);
+  } finally {
+    // Xoá bộ nhớ tạm
+    if (gray) gray.delete();
+    if (blurred) blurred.delete();
   }
-
-  gray.delete();
-  blurred.delete();
 }
 
 // =============================================
