@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Canny Edge Detector - Live</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="overlay">
+      <div class="spinner"></div>
+      <p id="loadingText">Đang khởi động hệ thống Thị Giác Máy Tính...</p>
+    </div>
+
+    <!-- Main Container -->
+    <main id="appContainer">
+      <!-- Video Element (Hidden, used for processing) -->
+      <video id="videoInput" autoplay playsinline></video>
+      
+      <!-- Canvas Element (Visible, displays final output) -->
+      <canvas id="canvasOutput"></canvas>
+
+      <!-- UI Overlay -->
+      <div class="ui-layer">
+        
+        <!-- Header -->
+        <header class="glass-panel top-panel">
+          <h1><i class="fa-solid fa-eye"></i> Canny Live Demo</h1>
+          <button id="switchCameraBtn" class="icon-btn" title="Chuyển Camera">
+            <i class="fa-solid fa-camera-rotate"></i>
+          </button>
+        </header>
+
+        <!-- Controls Bottom Panel -->
+        <div class="glass-panel bottom-panel">
+          
+          <!-- Mode Selector -->
+          <div class="mode-toggle">
+            <button id="modeOriginal" class="mode-btn">Ảnh gốc</button>
+            <button id="modeCanny" class="mode-btn active">Bắt cạnh (Canny)</button>
+          </div>
+
+          <!-- Sliders -->
+          <div class="sliders-container" id="cannyControls">
+            <div class="slider-group">
+              <label for="blurSlider">Làm mờ (Blur / Sigma): <span id="blurVal">5</span></label>
+              <input type="range" id="blurSlider" min="1" max="15" step="2" value="5">
+            </div>
+            
+            <div class="slider-group">
+              <label for="lowThreshSlider">Ngưỡng thấp (T_low): <span id="lowThreshVal">50</span></label>
+              <input type="range" id="lowThreshSlider" min="0" max="255" step="1" value="50">
+            </div>
+            
+            <div class="slider-group">
+              <label for="highThreshSlider">Ngưỡng cao (T_high): <span id="highThreshVal">150</span></label>
+              <input type="range" id="highThreshSlider" min="0" max="255" step="1" value="150">
+            </div>
+          </div>
+          
+        </div>
+
+      </div>
+    </main>
+
+    <!-- OpenCV.js -->
+    <!-- Async load to not block UI rendering, triggering window.onOpenCvReady when done -->
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+    <!-- Main Logic -->
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
