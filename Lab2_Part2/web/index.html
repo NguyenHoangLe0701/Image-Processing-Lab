@@ -3,40 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Canny Edge Detector</title>
-    <meta name="description" content="Demo thuật toán phát hiện biên Canny - Xử Lý Ảnh" />
+    <title>Canny Edge Detector – Xử Lý Ảnh</title>
+    <meta name="description" content="Demo thuật toán phát hiện biên Canny – Bài thực hành Xử Lý Ảnh" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="overlay">
-      <div class="spinner"></div>
+      <div class="loader">
+        <div class="loader-ring"></div>
+        <i class="fa-solid fa-eye loader-icon"></i>
+      </div>
       <p id="loadingText">Đang tải OpenCV.js...</p>
     </div>
 
-    <main id="app">
-
+    <div id="app">
       <!-- Header -->
       <header id="header">
-        <h1><i class="fa-solid fa-eye"></i> Canny Edge Detector</h1>
-        <p class="subtitle">Bài thực hành Chương 2 – Xử Lý Ảnh</p>
+        <div class="logo">
+          <div class="logo-icon"><i class="fa-solid fa-eye"></i></div>
+          <div>
+            <h1>Canny Edge Detector</h1>
+            <p class="tagline">Bài thực hành Chương 2 – Xử Lý Ảnh</p>
+          </div>
+        </div>
       </header>
 
-      <!-- Upload Area -->
+      <!-- Upload Section -->
       <section id="uploadSection">
         <div id="dropZone">
-          <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
-          <p>Kéo thả ảnh vào đây hoặc</p>
-          <div class="upload-buttons">
+          <div class="drop-visual">
+            <div class="drop-circle">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <h2>Tải ảnh lên để phân tích</h2>
+            <p>Kéo thả ảnh vào đây hoặc chọn phương thức bên dưới</p>
+          </div>
+          <div class="upload-actions">
             <label for="fileInput" class="btn btn-primary" id="uploadBtn">
-              <i class="fa-solid fa-image"></i> Chọn ảnh
+              <i class="fa-solid fa-folder-open"></i> Chọn từ thiết bị
             </label>
-            <button class="btn btn-secondary" id="captureBtn">
+            <button class="btn btn-glass" id="captureBtn">
               <i class="fa-solid fa-camera"></i> Chụp ảnh
             </button>
           </div>
@@ -45,44 +56,64 @@
         </div>
       </section>
 
-      <!-- Result Area (ẩn cho đến khi có ảnh) -->
+      <!-- Result Section -->
       <section id="resultSection" class="hidden">
-
-        <!-- Controls -->
+        <!-- Controls Panel -->
         <div id="controls">
-          <div class="slider-group">
-            <label>Làm mờ (Blur / Sigma): <span id="blurVal" class="val">5</span></label>
-            <input type="range" id="blurSlider" min="1" max="21" step="2" value="5">
+          <div class="controls-header">
+            <h2><i class="fa-solid fa-sliders"></i> Tham số Canny</h2>
+            <button class="btn btn-sm btn-glass" id="resetBtn" title="Đặt lại mặc định">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
           </div>
-          <div class="slider-group">
-            <label>Ngưỡng thấp (T_low): <span id="lowThreshVal" class="val">50</span></label>
-            <input type="range" id="lowThreshSlider" min="0" max="255" step="1" value="50">
-          </div>
-          <div class="slider-group">
-            <label>Ngưỡng cao (T_high): <span id="highThreshVal" class="val">150</span></label>
-            <input type="range" id="highThreshSlider" min="0" max="255" step="1" value="150">
+          <div class="sliders">
+            <div class="slider-group">
+              <div class="slider-label">
+                <span>Gaussian Blur (σ)</span>
+                <span class="slider-val" id="blurVal">5</span>
+              </div>
+              <input type="range" id="blurSlider" min="1" max="21" step="2" value="5">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label">
+                <span>Ngưỡng thấp (T<sub>low</sub>)</span>
+                <span class="slider-val" id="lowThreshVal">50</span>
+              </div>
+              <input type="range" id="lowThreshSlider" min="0" max="255" step="1" value="50">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label">
+                <span>Ngưỡng cao (T<sub>high</sub>)</span>
+                <span class="slider-val" id="highThreshVal">150</span>
+              </div>
+              <input type="range" id="highThreshSlider" min="0" max="255" step="1" value="150">
+            </div>
           </div>
         </div>
 
-        <!-- Images -->
+        <!-- Image Comparison -->
         <div id="imageGrid">
           <div class="image-card">
-            <h2>Ảnh gốc</h2>
-            <canvas id="canvasOriginal"></canvas>
+            <div class="card-header"><i class="fa-solid fa-image"></i> Ảnh gốc</div>
+            <div class="card-body"><canvas id="canvasOriginal"></canvas></div>
           </div>
-          <div class="image-card">
-            <h2>Bắt cạnh (Canny)</h2>
-            <canvas id="canvasCanny"></canvas>
+          <div class="image-card accent">
+            <div class="card-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Canny Edge</div>
+            <div class="card-body"><canvas id="canvasCanny"></canvas></div>
           </div>
         </div>
 
-        <!-- Change Image Button -->
-        <button class="btn btn-outline" id="changeImageBtn">
-          <i class="fa-solid fa-arrow-rotate-left"></i> Chọn ảnh khác
-        </button>
+        <!-- Actions -->
+        <div class="result-actions">
+          <button class="btn btn-glass" id="changeImageBtn">
+            <i class="fa-solid fa-images"></i> Chọn ảnh khác
+          </button>
+          <button class="btn btn-primary" id="downloadBtn">
+            <i class="fa-solid fa-download"></i> Tải kết quả
+          </button>
+        </div>
       </section>
-
-    </main>
+    </div>
 
     <script async src="https://docs.opencv.org/4.8.0/opencv.js" type="text/javascript"></script>
     <script type="module" src="./main.js"></script>
