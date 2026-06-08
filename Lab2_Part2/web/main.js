@@ -1,238 +1,118 @@
 import './style.css';
 
-// DOM Elements
 const video = document.getElementById('videoInput');
 const canvas = document.getElementById('canvasOutput');
-// willReadFrequently is important for performance when calling getImageData repeatedly
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-const loadingOverlay = document.getElementById('loadingOverlay');
+const overlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
-
-const modeOriginal = document.getElementById('modeOriginal');
-const modeCanny = document.getElementById('modeCanny');
-const cannyControls = document.getElementById('cannyControls');
-const switchCameraBtn = document.getElementById('switchCameraBtn');
 
 const blurSlider = document.getElementById('blurSlider');
 const lowThreshSlider = document.getElementById('lowThreshSlider');
 const highThreshSlider = document.getElementById('highThreshSlider');
 
-const blurVal = document.getElementById('blurVal');
-const lowThreshVal = document.getElementById('lowThreshVal');
-const highThreshVal = document.getElementById('highThreshVal');
-
-// App State
 let streaming = false;
-let currentMode = 'canny'; // 'original' or 'canny'
-let useFrontCamera = true; // Start with front camera (user)
-let cvReady = false;
+let currentMode = 'canny';
+let useFrontCamera = true;
+let src, dst, gray, blurred;
 
-// OpenCV Mats
-let src = null;
-let dst = null;
-let gray = null;
-let blurred = null;
-
-// Chờ OpenCV.js tải xong bằng cơ chế polling (kiểm tra mỗi 100ms)
-// Cách này chống được lỗi Race Condition khi deploy lên Vercel
+// --- Chờ OpenCV.js sẵn sàng ---
 function waitForOpenCv() {
-  if (typeof cv !== 'undefined') {
-    try {
-      // Thử tạo một Mat để xác nhận WebAssembly đã khởi tạo hoàn tất
-      let testMat = new cv.Mat();
-      testMat.delete();
-      
-      // OpenCV đã sẵn sàng!
-      console.log("OpenCV.js is ready.");
-      cvReady = true;
-      loadingText.innerText = "Đang khởi động Camera...";
-      initCamera();
-      return;
-    } catch (e) {
-      // WASM chưa khởi tạo xong, thử lại sau
-    }
+  try {
+    new cv.Mat().delete();
+    loadingText.innerText = 'Đang khởi động Camera...';
+    startCamera();
+  } catch {
+    setTimeout(waitForOpenCv, 100);
   }
-  // Kiểm tra lại sau 100ms
-  setTimeout(waitForOpenCv, 100);
 }
-
-// Bắt đầu kiểm tra ngay khi main.js chạy
 waitForOpenCv();
 
-// ==========================================
-// UI Event Listeners
-// ==========================================
-
-modeOriginal.addEventListener('click', () => {
-  currentMode = 'original';
-  modeOriginal.classList.add('active');
-  modeCanny.classList.remove('active');
-  cannyControls.classList.add('disabled');
-});
-
-modeCanny.addEventListener('click', () => {
-  currentMode = 'canny';
-  modeCanny.classList.add('active');
-  modeOriginal.classList.remove('active');
-  cannyControls.classList.remove('disabled');
-});
-
-switchCameraBtn.addEventListener('click', () => {
-  useFrontCamera = !useFrontCamera;
-  
-  // Handle CSS mirroring for front vs back camera
-  if (useFrontCamera) {
-    canvas.classList.remove('environment');
-  } else {
-    canvas.classList.add('environment');
-  }
-
-  if (streaming) {
-    stopCamera();
-    streaming = false; // Bắt buộc phải reset để dừng vòng lặp cũ
-    
-    // Xóa bộ nhớ OpenCV cũ (vì camera mới có thể có độ phân giải khác)
-    if (src) src.delete();
-    if (dst) dst.delete();
-    if (gray) gray.delete();
-    if (blurred) blurred.delete();
-    src = dst = gray = blurred = null;
-    
-    // Hiện lại màn hình loading
-    loadingOverlay.classList.remove('hidden');
-    document.querySelector('.spinner').style.display = 'block';
-    loadingText.innerText = "Đang chuyển Camera...";
-    
-    initCamera();
-  }
-});
-
-// Update Slider values text in UI
-blurSlider.addEventListener('input', (e) => blurVal.innerText = e.target.value);
-lowThreshSlider.addEventListener('input', (e) => lowThreshVal.innerText = e.target.value);
-highThreshSlider.addEventListener('input', (e) => highThreshVal.innerText = e.target.value);
-
-// ==========================================
-// Camera Handling
-// ==========================================
-
-function initCamera() {
-  const constraints = {
-    video: {
-      facingMode: useFrontCamera ? "user" : "environment",
-      // Ideal resolution (will scale down to screen size)
-      width: { ideal: 640 },
-      height: { ideal: 480 } 
-    },
+// --- Camera ---
+function startCamera() {
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: useFrontCamera ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
     audio: false
-  };
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    console.error("getUserMedia is not supported or not in a secure context (HTTPS).");
-    loadingText.innerText = "Lỗi: Trình duyệt không hỗ trợ Camera hoặc đang dùng HTTP. Yêu cầu dùng HTTPS hoặc localhost!";
-    loadingText.style.color = "#ff4444";
+  }).then(stream => {
+    video.srcObject = stream;
+    video.play();
+  }).catch(() => {
+    loadingText.innerText = 'Không thể truy cập Camera. Hãy cấp quyền và dùng HTTPS!';
+    loadingText.style.color = '#ff4444';
     document.querySelector('.spinner').style.display = 'none';
-    return;
-  }
-
-  navigator.mediaDevices.getUserMedia(constraints)
-    .then(function(stream) {
-      video.srcObject = stream;
-      video.play();
-    })
-    .catch(function(err) {
-      console.error("Camera Error:", err);
-      loadingText.innerText = "Không thể truy cập Camera. Vui lòng cấp quyền (Allow) khi trình duyệt yêu cầu!";
-      loadingText.style.color = "#ff4444";
-      document.querySelector('.spinner').style.display = 'none';
-    });
+  });
 }
 
 function stopCamera() {
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
-  }
+  if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
 }
 
-// ==========================================
-// Processing Loop (OpenCV)
-// ==========================================
-
-video.addEventListener('canplay', function(e) {
-  if (!streaming) {
-    // Setup Canvas dimensions to match video stream
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Init OpenCV matrices matching the resolution
-    src = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC4);
-    dst = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC1);
-    gray = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC1);
-    blurred = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC1);
-    
+// --- Khi video bắt đầu phát ---
+video.addEventListener('playing', function init() {
+  if (streaming) return;
+  // Chờ kích thước video sẵn sàng
+  (function check() {
+    if (video.videoWidth === 0) return setTimeout(check, 50);
+    const w = video.videoWidth, h = video.videoHeight;
+    canvas.width = w; canvas.height = h;
+    src = new cv.Mat(h, w, cv.CV_8UC4);
+    dst = new cv.Mat(h, w, cv.CV_8UC1);
+    gray = new cv.Mat(h, w, cv.CV_8UC1);
+    blurred = new cv.Mat(h, w, cv.CV_8UC1);
     streaming = true;
-    loadingOverlay.classList.add('hidden'); // Hide loading screen
-    
-    // Start processing loop
+    overlay.classList.add('hidden');
     requestAnimationFrame(processVideo);
-  }
-}, false);
+  })();
+});
 
+// --- Vòng lặp xử lý ảnh ---
 function processVideo() {
   if (!streaming) return;
-  if (!cvReady) {
-    requestAnimationFrame(processVideo);
-    return;
-  }
-
-  try {
-    // 1. Draw video to hidden canvas context and read it into cv.Mat
+  if (video.readyState >= 2) {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    src.data.set(imageData.data);
+    src.data.set(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
 
-    if (currentMode === 'original') {
-      // Just render original directly
-      cv.imshow('canvasOutput', src);
-    } else {
-      // ======================================
-      // CANNY ALGORITHM PIPELINE
-      // ======================================
-      
-      // Step 1: Grayscale
+    if (currentMode === 'canny') {
       cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-      
-      // Step 2: Gaussian Blur (noise reduction)
-      let blurKsize = parseInt(blurSlider.value);
-      // Ensure Ksize is odd
-      if (blurKsize % 2 === 0) blurKsize += 1; 
-      
-      let ksize = new cv.Size(blurKsize, blurKsize);
-      cv.GaussianBlur(gray, blurred, ksize, 0, 0, cv.BORDER_DEFAULT);
-      ksize.delete(); // Bắt buộc phải giải phóng bộ nhớ C++ của object này
-      
-      // Step 3: Canny Edge Detection
-      let lowThresh = parseInt(lowThreshSlider.value);
-      let highThresh = parseInt(highThreshSlider.value);
-      cv.Canny(blurred, dst, lowThresh, highThresh, 3, false);
-      
-      // Render edges to canvas
+      let k = parseInt(blurSlider.value); if (k % 2 === 0) k++;
+      let ksize = new cv.Size(k, k);
+      cv.GaussianBlur(gray, blurred, ksize, 0);
+      ksize.delete();
+      cv.Canny(blurred, dst, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value));
       cv.imshow('canvasOutput', dst);
+    } else {
+      cv.imshow('canvasOutput', src);
     }
-  } catch (err) {
-    console.error("Processing Error:", err);
   }
-
-  // Schedule next frame
   requestAnimationFrame(processVideo);
 }
 
-// Clean up memory on unload
-window.addEventListener('beforeunload', () => {
-  stopCamera();
-  if (src) src.delete();
-  if (dst) dst.delete();
-  if (gray) gray.delete();
-  if (blurred) blurred.delete();
+// --- UI ---
+document.getElementById('modeOriginal').addEventListener('click', () => {
+  currentMode = 'original';
+  document.getElementById('modeOriginal').classList.add('active');
+  document.getElementById('modeCanny').classList.remove('active');
+  document.getElementById('cannyControls').classList.add('disabled');
+});
+document.getElementById('modeCanny').addEventListener('click', () => {
+  currentMode = 'canny';
+  document.getElementById('modeCanny').classList.add('active');
+  document.getElementById('modeOriginal').classList.remove('active');
+  document.getElementById('cannyControls').classList.remove('disabled');
+});
+
+blurSlider.addEventListener('input', e => document.getElementById('blurVal').innerText = e.target.value);
+lowThreshSlider.addEventListener('input', e => document.getElementById('lowThreshVal').innerText = e.target.value);
+highThreshSlider.addEventListener('input', e => document.getElementById('highThreshVal').innerText = e.target.value);
+
+document.getElementById('switchCameraBtn').addEventListener('click', () => {
+  useFrontCamera = !useFrontCamera;
+  canvas.classList.toggle('environment', !useFrontCamera);
+  if (streaming) {
+    stopCamera();
+    streaming = false;
+    if (src) { src.delete(); dst.delete(); gray.delete(); blurred.delete(); }
+    overlay.classList.remove('hidden');
+    loadingText.innerText = 'Đang chuyển Camera...';
+    startCamera();
+  }
 });
