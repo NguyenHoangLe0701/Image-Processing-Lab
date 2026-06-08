@@ -1,16 +1,16 @@
 /* ============================================
-   Classroom Demo / Presentation Theme (Light)
+   Photo Studio Theme (Lightroom / Pro App Style)
    ============================================ */
 :root {
-  --bg-main: #f8fafc; /* Rất nhạt để dễ nhìn trên máy chiếu */
-  --bg-panel: #ffffff;
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --border-color: #e2e8f0;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --bg-app: #111111;
+  --bg-toolbar: #222222;
+  --bg-panel: #1a1a1a;
+  --border: #333333;
+  --text-main: #eeeeee;
+  --text-muted: #999999;
+  --accent: #0a84ff; /* System Blue */
+  --accent-hover: #006ee6;
+  --radius-lg: 12px;
   --radius-md: 8px;
   --radius-sm: 6px;
 }
@@ -18,212 +18,238 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background-color: var(--bg-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-app);
   color: var(--text-main);
   line-height: 1.5;
   height: 100vh;
-  overflow: hidden; /* Cố định màn hình, không cuộn */
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ============================================
    Loading Overlay
    ============================================ */
 .overlay {
-  position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95);
-  z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: fixed; inset: 0; background: rgba(17, 17, 17, 0.9);
+  z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
   transition: opacity 0.3s ease;
 }
 .overlay.hidden { opacity: 0; pointer-events: none; }
 .spinner {
-  width: 48px; height: 48px; border: 4px solid var(--border-color); border-top-color: var(--accent);
+  width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent);
   border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-#loadingText { color: var(--text-main); font-size: 1.1rem; font-weight: 500; }
+#loadingText { color: var(--text-muted); font-size: 0.95rem; }
 
 /* ============================================
-   Upload Screen (Màn hình 1)
+   Screens & Layouts
    ============================================ */
-.upload-screen {
+.screen {
   height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.upload-box {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-color);
-  padding: 60px 80px;
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
-  text-align: center;
-}
-.upload-box h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.upload-box p {
-  color: var(--text-muted);
-  font-size: 1.1rem;
-  margin-bottom: 40px;
-}
-.btn-mega {
-  display: inline-flex; align-items: center; gap: 12px;
-  background: var(--accent); color: white;
-  padding: 16px 32px; border-radius: 12px;
-  font-size: 1.2rem; font-weight: 600; cursor: pointer;
-  transition: background 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-.btn-mega:hover { background: var(--accent-hover); }
-
-/* ============================================
-   Demo Layout (Màn hình 2)
-   ============================================ */
-.demo-layout {
-  height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
 }
+.flex-center {
+  justify-content: center;
+  align-items: center;
+}
+.hidden { display: none !important; }
 
 /* ============================================
-   Top Dashboard
+   Upload Screen
    ============================================ */
-.top-dashboard {
+.upload-panel {
   background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-color);
-  padding: 16px 24px;
-  box-shadow: var(--shadow-sm);
-  z-index: 10;
+  border: 1px dashed var(--border);
+  padding: 60px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  max-width: 500px;
+  width: 90%;
+  transition: all 0.2s;
+}
+.upload-panel.dragover {
+  border-color: var(--accent);
+  background: #1f2937;
+}
+.upload-panel h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-bottom: 32px;
+}
+.mb-3 { margin-bottom: 16px; }
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ============================================
+   Studio Screen (Result)
+   ============================================ */
+.toolbar {
+  background: var(--bg-toolbar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
-.dashboard-top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.dashboard-top-row h2 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-.top-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.top-bar {
+  height: 60px;
 }
 
-/* Nút Chuyển Chế Độ (Segment) */
-.segment-control {
+.left-tools, .right-tools, .center-tools {
   display: flex;
-  background: var(--bg-main);
-  padding: 4px;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Segment Control */
+.segment-control {
+  background: #111;
+  padding: 3px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border);
+  display: flex;
 }
 .segment-btn {
-  padding: 8px 24px;
+  padding: 6px 16px;
   border: none; background: transparent;
   border-radius: var(--radius-sm);
-  font-size: 1rem; font-weight: 600;
+  font-size: 0.85rem; font-weight: 500;
   color: var(--text-muted);
   cursor: pointer; transition: all 0.2s;
 }
 .segment-btn:hover { color: var(--text-main); }
 .segment-btn.active {
-  background: var(--bg-panel);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-
-/* Dãy thanh trượt */
-.controls-row {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-}
-.slider-box {
-  flex: 1;
-}
-.slider-box label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.95rem;
-  font-weight: 600;
+  background: #333;
   color: var(--text-main);
-  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
-.val-badge {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.slider-demo {
-  -webkit-appearance: none;
-  width: 100%; height: 8px;
-  background: var(--border-color);
-  border-radius: 4px; outline: none;
-}
-.slider-demo::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer; transition: transform 0.1s;
-}
-.slider-demo::-webkit-slider-thumb:active { transform: scale(1.1); }
 
 /* ============================================
-   Huge Viewport (Vùng Hiển Thị Ảnh)
+   Viewport (Canvas Area)
    ============================================ */
-.huge-viewport {
-  flex: 1; /* Chiếm toàn bộ phần còn lại của màn hình */
-  background: #e2e8f0; /* Màu nền hơi tối hơn panel để ảnh nổi bật */
+.viewport {
+  flex: 1;
+  background: #161616;
   background-image: 
-    linear-gradient(45deg, #cbd5e1 25%, transparent 25%), 
-    linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, #cbd5e1 75%), 
-    linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+    linear-gradient(45deg, #1c1c1e 25%, transparent 25%), 
+    linear-gradient(-45deg, #1c1c1e 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #1c1c1e 75%), 
+    linear-gradient(-45deg, transparent 75%, #1c1c1e 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 24px;
+  padding: 32px;
   overflow: hidden;
-}
-
-.canvas-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 
 #canvasDisplay {
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain; /* Đảm bảo hình luôn nằm trọn trong khung và không bị méo */
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-  background: white; /* Nền trắng cho ảnh nếu ảnh có nền trong suốt */
+  object-fit: contain;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
 }
+
+/* ============================================
+   Bottom Toolbar (Sliders)
+   ============================================ */
+.bottom-bar {
+  height: 80px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 32px;
+  padding: 0 40px;
+}
+
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.slider-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.val {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* Custom Sliders */
+.slider {
+  -webkit-appearance: none;
+  width: 100%; height: 4px;
+  background: #444;
+  border-radius: 2px; outline: none;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--text-main);
+  cursor: pointer; transition: transform 0.1s;
+}
+.slider::-webkit-slider-thumb:active { transform: scale(1.2); }
 
 /* ============================================
    Buttons
    ============================================ */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 8px 20px; border-radius: var(--radius-md);
-  font-size: 1rem; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 8px 16px; border-radius: var(--radius-sm);
+  font-size: 0.85rem; font-weight: 500; cursor: pointer;
   border: 1px solid transparent; transition: all 0.2s;
+  text-decoration: none;
 }
 .btn-primary { background: var(--accent); color: white; }
 .btn-primary:hover { background: var(--accent-hover); }
 
-.btn-outline { background: white; color: var(--text-main); border-color: var(--border-color); }
-.btn-outline:hover { background: var(--bg-main); border-color: #cbd5e1; }
+.btn-secondary { background: #333; color: var(--text-main); border: 1px solid #444; }
+.btn-secondary:hover { background: #444; border-color: #555; }
 
-.hidden { display: none !important; }
+.btn-icon {
+  padding: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+}
+.btn-icon:hover {
+  background: #333;
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 800px) {
+  .bottom-bar {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    padding: 16px 24px;
+    gap: 16px;
+  }
+  .top-bar { padding: 12px 16px; }
+  .segment-btn { padding: 6px 12px; }
+}
