@@ -7,8 +7,7 @@ const resultSection = document.getElementById('resultSection');
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const cameraInput = document.getElementById('cameraInput');
-const canvasOriginal = document.getElementById('canvasOriginal');
-const canvasCanny = document.getElementById('canvasCanny');
+const canvasDisplay = document.getElementById('canvasDisplay');
 const blurSlider = document.getElementById('blurSlider');
 const lowThreshSlider = document.getElementById('lowThreshSlider');
 const highThreshSlider = document.getElementById('highThreshSlider');
@@ -16,6 +15,7 @@ const modeOriginal = document.getElementById('modeOriginal');
 const modeCanny = document.getElementById('modeCanny');
 
 let originalMat = null;
+let currentEdges = null;
 let mode = 'canny'; // 'original' hoặc 'canny'
 
 // =============================================
@@ -47,7 +47,6 @@ cameraInput.addEventListener('change', e => {
   if (e.target.files[0]) loadImage(e.target.files[0]);
 });
 
-// Kéo thả
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', e => {
@@ -57,16 +56,15 @@ dropZone.addEventListener('drop', e => {
   if (file && file.type.startsWith('image/')) loadImage(file);
 });
 
-// Chọn ảnh khác
 document.getElementById('changeImageBtn').addEventListener('click', () => {
   uploadSection.classList.remove('hidden');
   resultSection.classList.add('hidden');
   if (originalMat) { originalMat.delete(); originalMat = null; }
+  if (currentEdges) { currentEdges.delete(); currentEdges = null; }
   fileInput.value = '';
   cameraInput.value = '';
 });
 
-// Reset tham số
 document.getElementById('resetBtn').addEventListener('click', () => {
   blurSlider.value = 5;
   lowThreshSlider.value = 50;
@@ -77,11 +75,10 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   applyCanny();
 });
 
-// Tải kết quả
 document.getElementById('downloadBtn').addEventListener('click', () => {
   const link = document.createElement('a');
-  link.download = 'canny_result.png';
-  link.href = canvasCanny.toDataURL('image/png');
+  link.download = mode === 'canny' ? 'canny_result.png' : 'original_image.png';
+  link.href = canvasDisplay.toDataURL('image/png');
   link.click();
 });
 
@@ -92,16 +89,18 @@ modeOriginal.addEventListener('click', () => {
   mode = 'original';
   modeOriginal.classList.add('active');
   modeCanny.classList.remove('active');
-  canvasOriginal.style.display = 'block';
-  canvasCanny.style.display = 'none';
+  if (originalMat && !originalMat.empty()) {
+    cv.imshow('canvasDisplay', originalMat);
+  }
 });
 
 modeCanny.addEventListener('click', () => {
   mode = 'canny';
   modeCanny.classList.add('active');
   modeOriginal.classList.remove('active');
-  canvasOriginal.style.display = 'none';
-  canvasCanny.style.display = 'block';
+  if (currentEdges && !currentEdges.empty()) {
+    cv.imshow('canvasDisplay', currentEdges);
+  }
 });
 
 // =============================================
@@ -120,32 +119,27 @@ function loadImage(file) {
         else { w = Math.round(w * MAX / h); h = MAX; }
       }
 
-      // Vẽ ảnh gốc
-      canvasOriginal.width = w;
-      canvasOriginal.height = h;
-      const ctx = canvasOriginal.getContext('2d');
+      // Vẽ ảnh ra một canvas ẩn để lấy pixel
+      const hiddenCanvas = document.createElement('canvas');
+      hiddenCanvas.width = w;
+      hiddenCanvas.height = h;
+      const ctx = hiddenCanvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
 
-      // Đọc pixel vào OpenCV Mat (cách thủ công - chắc chắn hoạt động)
+      // Đọc vào OpenCV Mat
       const imageData = ctx.getImageData(0, 0, w, h);
       if (originalMat) originalMat.delete();
       originalMat = new cv.Mat(h, w, cv.CV_8UC4);
       originalMat.data.set(imageData.data);
 
-      // Setup canvas Canny cùng kích thước
-      canvasCanny.width = w;
-      canvasCanny.height = h;
-
       // Hiện kết quả
       uploadSection.classList.add('hidden');
       resultSection.classList.remove('hidden');
 
-      // Đặt mode về Canny
+      // Đặt mode về Canny mặc định
       mode = 'canny';
       modeCanny.classList.add('active');
       modeOriginal.classList.remove('active');
-      canvasOriginal.style.display = 'none';
-      canvasCanny.style.display = 'block';
 
       // Chạy Canny
       applyCanny();
@@ -161,9 +155,11 @@ function loadImage(file) {
 function applyCanny() {
   if (!originalMat || originalMat.empty()) return;
 
+  if (currentEdges) currentEdges.delete();
+  currentEdges = new cv.Mat();
+
   let gray = new cv.Mat();
   let blurred = new cv.Mat();
-  let edges = new cv.Mat();
 
   try {
     // Bước 1: Grayscale
@@ -177,18 +173,28 @@ function applyCanny() {
     ksize.delete();
 
     // Bước 3: Canny
-    cv.Canny(blurred, edges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
+    cv.Canny(blurred, currentEdges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
 
-    // Hiển thị
-    cv.imshow('canvasCanny', edges);
+    // Nếu đang ở mode Canny thì hiển thị kết quả luôn
+    if (mode === 'canny') {
+      cv.imshow('canvasDisplay', currentEdges);
+    }
   } catch (e) {
     console.error('Canny error:', e);
-    document.title = 'ERR: ' + e.message;
+    
+    // In lỗi trực tiếp lên Canvas để debug
+    const ctx = canvasDisplay.getContext('2d');
+    canvasDisplay.width = originalMat.cols;
+    canvasDisplay.height = originalMat.rows;
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '20px sans-serif';
+    ctx.fillText('Lỗi OpenCV: ' + e.message, 20, 50);
   }
 
   gray.delete();
   blurred.delete();
-  edges.delete();
 }
 
 // =============================================
