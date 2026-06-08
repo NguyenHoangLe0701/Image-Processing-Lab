@@ -17,11 +17,10 @@ let src, dst, gray, blurred;
 
 // --- Chờ OpenCV.js sẵn sàng ---
 function waitForOpenCv() {
-  try {
-    new cv.Mat().delete();
+  if (typeof cv !== 'undefined' && cv.getBuildInformation) {
     loadingText.innerText = 'Đang khởi động Camera...';
     startCamera();
-  } catch {
+  } else {
     setTimeout(waitForOpenCv, 100);
   }
 }
