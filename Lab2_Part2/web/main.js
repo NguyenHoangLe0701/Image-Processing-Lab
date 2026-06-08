@@ -3,6 +3,7 @@ import './style.css';
 // === DOM ===
 const video = document.getElementById('videoInput');
 const canvas = document.getElementById('canvasOutput');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const overlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
 const blurSlider = document.getElementById('blurSlider');
@@ -13,7 +14,6 @@ const highThreshSlider = document.getElementById('highThreshSlider');
 let streaming = false;
 let mode = 'canny';
 let frontCam = true;
-let cap, src, dst, gray, blurred;
 
 // =============================================
 // 1. Chờ OpenCV WASM khởi tạo xong
@@ -30,38 +30,30 @@ function waitForOpenCv() {
 waitForOpenCv();
 
 // =============================================
-// 2. Mở Camera
+// 2. Mở Camera (3 cấp fallback)
 // =============================================
 function openCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showError('Trình duyệt không hỗ trợ Camera hoặc chưa dùng HTTPS!');
     return;
   }
-
-  const tryConstraints = [
+  const tries = [
     { video: { facingMode: frontCam ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
     { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
     { video: true, audio: false }
   ];
-
-  function tryNext(i) {
-    if (i >= tryConstraints.length) {
-      showError('Không tìm thấy Camera. Hãy kiểm tra thiết bị!');
-      return;
-    }
-    navigator.mediaDevices.getUserMedia(tryConstraints[i])
-      .then(onCameraSuccess)
-      .catch(() => tryNext(i + 1));
+  function attempt(i) {
+    if (i >= tries.length) { showError('Không tìm thấy Camera!'); return; }
+    navigator.mediaDevices.getUserMedia(tries[i]).then(onStream).catch(() => attempt(i + 1));
   }
-  tryNext(0);
+  attempt(0);
 }
 
-function onCameraSuccess(stream) {
+function onStream(stream) {
   video.srcObject = stream;
   video.play();
   stream.getVideoTracks()[0].addEventListener('ended', () => {
     streaming = false;
-    freeMats();
     showLoading('Camera bị ngắt. Đang kết nối lại...');
     setTimeout(openCamera, 1000);
   });
@@ -90,67 +82,58 @@ function showLoading(msg) {
 // =============================================
 video.addEventListener('playing', () => {
   if (streaming) return;
-  waitDimensions();
+  (function checkSize() {
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      streaming = true;
+      overlay.classList.add('hidden');
+      console.log(`Streaming ${canvas.width}x${canvas.height}`);
+      tick();
+    } else {
+      setTimeout(checkSize, 50);
+    }
+  })();
 });
-
-function waitDimensions() {
-  if (video.videoWidth > 0 && video.videoHeight > 0) {
-    startStream();
-  } else {
-    setTimeout(waitDimensions, 50);
-  }
-}
-
-function startStream() {
-  if (streaming) return;
-  const w = video.videoWidth, h = video.videoHeight;
-  canvas.width = w;
-  canvas.height = h;
-
-  // Dùng VideoCapture chính thức của OpenCV.js
-  cap = new cv.VideoCapture(video);
-  src = new cv.Mat(h, w, cv.CV_8UC4);
-  dst = new cv.Mat(h, w, cv.CV_8UC1);
-  gray = new cv.Mat();
-  blurred = new cv.Mat();
-
-  streaming = true;
-  overlay.classList.add('hidden');
-  console.log(`Streaming ${w}x${h}`);
-  tick();
-}
 
 // =============================================
 // 4. Vòng lặp xử lý ảnh
+//    Tạo Mat mới mỗi frame rồi xóa ngay
+//    -> Chậm hơn nhưng KHÔNG BAO GIỜ lỗi kích thước
 // =============================================
 function tick() {
   if (!streaming) return;
 
   try {
     if (video.readyState >= 2) {
-      // Đọc frame bằng VideoCapture (cách chính thức OpenCV.js)
-      cap.read(src);
+      // Vẽ video lên canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       if (mode === 'canny') {
-        // Bước 1: Chuyển sang ảnh xám
+        // Đọc pixel từ canvas vào Mat
+        let src = cv.imread(canvas);
+        let gray = new cv.Mat();
+        let blur = new cv.Mat();
+        let edges = new cv.Mat();
+
+        // Pipeline Canny
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
 
-        // Bước 2: Làm mờ Gaussian (giảm nhiễu)
         let k = parseInt(blurSlider.value);
         if (k % 2 === 0) k++;
         let ksize = new cv.Size(k, k);
-        cv.GaussianBlur(gray, blurred, ksize, 0, 0, cv.BORDER_DEFAULT);
+        cv.GaussianBlur(gray, blur, ksize, 0, 0, cv.BORDER_DEFAULT);
         ksize.delete();
 
-        // Bước 3: Phát hiện biên Canny
-        cv.Canny(blurred, dst, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
+        cv.Canny(blur, edges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
 
-        // Hiển thị kết quả
-        cv.imshow('canvasOutput', dst);
-      } else {
-        // Hiển thị ảnh gốc
-        cv.imshow('canvasOutput', src);
+        // Hiển thị kết quả lên canvas
+        cv.imshow('canvasOutput', edges);
+
+        // Giải phóng bộ nhớ C++ NGAY LẬP TỨC
+        src.delete(); gray.delete(); blur.delete(); edges.delete();
       }
+      // mode 'original': canvas đã có video frame từ drawImage, không cần làm gì thêm
     }
   } catch (e) {
     console.error('Frame error:', e);
@@ -160,20 +143,7 @@ function tick() {
 }
 
 // =============================================
-// 5. Giải phóng bộ nhớ
-// =============================================
-function freeMats() {
-  try {
-    if (src) src.delete();
-    if (dst) dst.delete();
-    if (gray) gray.delete();
-    if (blurred) blurred.delete();
-  } catch (e) { /* ignore */ }
-  cap = src = dst = gray = blurred = null;
-}
-
-// =============================================
-// 6. UI Events
+// 5. UI Events
 // =============================================
 document.getElementById('modeOriginal').addEventListener('click', () => {
   mode = 'original';
@@ -198,9 +168,8 @@ document.getElementById('switchCameraBtn').addEventListener('click', () => {
   canvas.classList.toggle('environment', !frontCam);
   closeCamera();
   streaming = false;
-  freeMats();
   showLoading('Đang chuyển Camera...');
   openCamera();
 });
 
-window.addEventListener('beforeunload', () => { closeCamera(); freeMats(); });
+window.addEventListener('beforeunload', () => closeCamera());
