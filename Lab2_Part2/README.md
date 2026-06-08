@@ -11,7 +11,7 @@
 Bạn có thể tự mình trải nghiệm ứng dụng **Canny Edge Studio** ngay trên điện thoại hoặc máy tính bằng cách quét mã QR bên dưới:
 
 <div align="center">
-  <img src="D:\Workspace\Xử Lý Ảnh\Lab2_Part2\data\input\QR.jpg" alt="QR Code Canny Web App" width="300"/>
+  <img src="data/input/QR.jpg" alt="QR Code Canny Web App" width="300"/>
   <p><i>Quét để mở ứng dụng Canny Edge Studio</i></p>
 </div>
 
