@@ -72,6 +72,20 @@ switchCameraBtn.addEventListener('click', () => {
 
   if (streaming) {
     stopCamera();
+    streaming = false; // Bắt buộc phải reset để dừng vòng lặp cũ
+    
+    // Xóa bộ nhớ OpenCV cũ (vì camera mới có thể có độ phân giải khác)
+    if (src) src.delete();
+    if (dst) dst.delete();
+    if (gray) gray.delete();
+    if (blurred) blurred.delete();
+    src = dst = gray = blurred = null;
+    
+    // Hiện lại màn hình loading
+    loadingOverlay.classList.remove('hidden');
+    document.querySelector('.spinner').style.display = 'block';
+    loadingText.innerText = "Đang chuyển Camera...";
+    
     initCamera();
   }
 });
