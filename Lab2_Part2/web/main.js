@@ -169,7 +169,6 @@ function applyCanny() {
     if (k % 2 === 0) k++;
     let ksize = new cv.Size(k, k);
     cv.GaussianBlur(gray, blurred, ksize, 0, 0, cv.BORDER_DEFAULT);
-    ksize.delete();
 
     // Bước 3: Canny
     cv.Canny(blurred, currentEdges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
