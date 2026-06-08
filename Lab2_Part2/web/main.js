@@ -104,18 +104,23 @@ video.addEventListener('playing', () => {
 function tick() {
   if (!streaming) return;
 
+  let src = null, gray = null, blur = null, edges = null;
+
   try {
     if (video.readyState >= 2) {
+      const w = canvas.width, h = canvas.height;
+
       // Vẽ video lên canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, w, h);
 
       if (mode === 'canny') {
-        // Đọc pixel từ canvas bằng matFromImageData (tường minh nhất)
-        let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        let src = cv.matFromImageData(imgData);
-        let gray = new cv.Mat();
-        let blur = new cv.Mat();
-        let edges = new cv.Mat();
+        // Đọc pixel từ canvas vào Mat (constructor tường minh)
+        src = new cv.Mat(h, w, cv.CV_8UC4);
+        src.data.set(ctx.getImageData(0, 0, w, h).data);
+
+        gray = new cv.Mat(h, w, cv.CV_8UC1);
+        blur = new cv.Mat(h, w, cv.CV_8UC1);
+        edges = new cv.Mat(h, w, cv.CV_8UC1);
 
         // Pipeline Canny
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
@@ -128,18 +133,19 @@ function tick() {
 
         cv.Canny(blur, edges, parseInt(lowThreshSlider.value), parseInt(highThreshSlider.value), 3, false);
 
-        // Hiển thị kết quả
         cv.imshow('canvasOutput', edges);
-
-        // Giải phóng bộ nhớ
-        src.delete(); gray.delete(); blur.delete(); edges.delete();
       }
     }
   } catch (e) {
-    // HIỆN LỖI TRÊN MÀN HÌNH (để debug trên mobile)
     document.title = 'ERR: ' + e.message;
     console.error('Frame error:', e);
   }
+
+  // Giải phóng bộ nhớ (an toàn, từng cái một)
+  try { if (src) src.delete(); } catch(e) {}
+  try { if (gray) gray.delete(); } catch(e) {}
+  try { if (blur) blur.delete(); } catch(e) {}
+  try { if (edges) edges.delete(); } catch(e) {}
 
   requestAnimationFrame(tick);
 }
