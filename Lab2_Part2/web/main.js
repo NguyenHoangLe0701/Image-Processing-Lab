@@ -175,7 +175,10 @@ function processVideo() {
       let blurKsize = parseInt(blurSlider.value);
       // Ensure Ksize is odd
       if (blurKsize % 2 === 0) blurKsize += 1; 
-      cv.GaussianBlur(gray, blurred, new cv.Size(blurKsize, blurKsize), 0, 0, cv.BORDER_DEFAULT);
+      
+      let ksize = new cv.Size(blurKsize, blurKsize);
+      cv.GaussianBlur(gray, blurred, ksize, 0, 0, cv.BORDER_DEFAULT);
+      ksize.delete(); // Bắt buộc phải giải phóng bộ nhớ C++ của object này
       
       // Step 3: Canny Edge Detection
       let lowThresh = parseInt(lowThreshSlider.value);
