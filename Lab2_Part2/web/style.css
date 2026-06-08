@@ -1,299 +1,229 @@
 /* ============================================
-   Modern Slate App Theme (Tailwind Inspired)
+   Classroom Demo / Presentation Theme (Light)
    ============================================ */
 :root {
-  --bg-app: #020617; /* slate-950 */
-  --bg-card: #0f172a; /* slate-900 */
-  --bg-hover: #1e293b; /* slate-800 */
-  --border: #1e293b; /* slate-800 */
-  --border-focus: #334155; /* slate-700 */
-  --text-primary: #f8fafc; /* slate-50 */
-  --text-secondary: #94a3b8; /* slate-400 */
-  --accent: #6366f1; /* indigo-500 */
-  --accent-hover: #4f46e5; /* indigo-600 */
-  --accent-light: rgba(99, 102, 241, 0.15);
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --bg-main: #f8fafc; /* Rất nhạt để dễ nhìn trên máy chiếu */
+  --bg-panel: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border-color: #e2e8f0;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --radius-md: 8px;
+  --radius-sm: 6px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: var(--bg-app);
-  color: var(--text-primary);
+  background-color: var(--bg-main);
+  color: var(--text-main);
   line-height: 1.5;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  overflow: hidden; /* Cố định màn hình, không cuộn */
 }
 
 /* ============================================
    Loading Overlay
    ============================================ */
 .overlay {
-  position: fixed; inset: 0; background: rgba(2, 6, 23, 0.9);
-  backdrop-filter: blur(8px); z-index: 50;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95);
+  z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center;
   transition: opacity 0.3s ease;
 }
 .overlay.hidden { opacity: 0; pointer-events: none; }
 .spinner {
-  width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent);
+  width: 48px; height: 48px; border: 4px solid var(--border-color); border-top-color: var(--accent);
   border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-#loadingText { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
+#loadingText { color: var(--text-main); font-size: 1.1rem; font-weight: 500; }
 
 /* ============================================
-   Top Navbar
+   Upload Screen (Màn hình 1)
    ============================================ */
-.navbar {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 10;
+.upload-screen {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.nav-content {
-  max-width: 1400px;
-  margin: 0 auto;
+.upload-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  padding: 60px 80px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+.upload-box h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.upload-box p {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  margin-bottom: 40px;
+}
+.btn-mega {
+  display: inline-flex; align-items: center; gap: 12px;
+  background: var(--accent); color: white;
+  padding: 16px 32px; border-radius: 12px;
+  font-size: 1.2rem; font-weight: 600; cursor: pointer;
+  transition: background 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+.btn-mega:hover { background: var(--accent-hover); }
+
+/* ============================================
+   Demo Layout (Màn hình 2)
+   ============================================ */
+.demo-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   Top Dashboard
+   ============================================ */
+.top-dashboard {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
   padding: 16px 24px;
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.dashboard-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.brand-icon { color: var(--accent); }
-.nav-brand h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.badge {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  padding: 4px 12px;
-  border-radius: 99px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid var(--border);
-}
-
-/* ============================================
-   Main Layout
-   ============================================ */
-#app-main {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-.section-container {
-  width: 100%;
-}
-
-/* ============================================
-   Upload Section
-   ============================================ */
-.upload-card {
-  max-width: 800px;
-  margin: 40px auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 40px;
-  box-shadow: var(--shadow-card);
-}
-.drop-zone {
-  border: 2px dashed var(--border-focus);
-  border-radius: var(--radius-md);
-  padding: 60px 20px;
-  text-align: center;
-  transition: all 0.2s;
-}
-.drop-zone:hover, .drop-zone.dragover {
-  border-color: var(--accent);
-  background: var(--accent-light);
-}
-.drop-icon {
-  color: var(--accent);
-  margin-bottom: 20px;
-  display: flex; justify-content: center;
-}
-.drop-zone h2 {
-  font-size: 1.25rem; font-weight: 600; margin-bottom: 8px;
-}
-.drop-zone p {
-  color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 32px;
-}
-.upload-actions {
-  display: flex; justify-content: center; gap: 16px;
-}
-
-/* ============================================
-   Workspace Grid (2-Column)
-   ============================================ */
-.workspace-grid {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
-/* Sidebar Panels */
-.panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
   margin-bottom: 16px;
 }
-.panel-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(255,255,255,0.02);
+.dashboard-top-row h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-main);
 }
-.panel-header h3 {
-  font-size: 1rem; font-weight: 600; color: var(--text-primary);
-}
-.btn-icon {
-  background: transparent; border: none; color: var(--text-secondary);
-  cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.2s;
-  display: flex; align-items: center; justify-content: center;
-}
-.btn-icon:hover { color: var(--text-primary); background: var(--bg-hover); }
-
-.panel-body {
-  padding: 24px 20px;
-  display: flex; flex-direction: column; gap: 24px;
-}
-.actions-panel {
-  padding: 16px;
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-/* Sliders */
-.slider-group { display: flex; flex-direction: column; gap: 12px; }
-.slider-header {
-  display: flex; justify-content: space-between; align-items: center;
+/* Nút Chuyển Chế Độ (Segment) */
+.segment-control {
+  display: flex;
+  background: var(--bg-main);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
-.slider-header label {
-  font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);
+.segment-btn {
+  padding: 8px 24px;
+  border: none; background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 1rem; font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer; transition: all 0.2s;
 }
-.value-badge {
-  background: var(--bg-app);
-  border: 1px solid var(--border);
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 0.8rem;
+.segment-btn:hover { color: var(--text-main); }
+.segment-btn.active {
+  background: var(--bg-panel);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Dãy thanh trượt */
+.controls-row {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+}
+.slider-box {
+  flex: 1;
+}
+.slider-box label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
   font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+.val-badge {
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 
-.custom-slider {
+.slider-demo {
   -webkit-appearance: none;
-  width: 100%; height: 6px;
-  background: var(--bg-app);
-  border-radius: 3px; outline: none;
-  border: 1px solid var(--border);
+  width: 100%; height: 8px;
+  background: var(--border-color);
+  border-radius: 4px; outline: none;
 }
-.custom-slider::-webkit-slider-thumb {
+.slider-demo::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--text-primary);
-  border: 2px solid var(--accent);
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent);
   cursor: pointer; transition: transform 0.1s;
 }
-.custom-slider::-webkit-slider-thumb:active { transform: scale(1.15); }
+.slider-demo::-webkit-slider-thumb:active { transform: scale(1.1); }
 
 /* ============================================
-   Main Viewport
+   Huge Viewport (Vùng Hiển Thị Ảnh)
    ============================================ */
-.viewport {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  display: flex; flex-direction: column;
-  min-height: 500px;
-  overflow: hidden;
-}
-.viewport-toolbar {
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(255,255,255,0.02);
-}
-
-/* Segment Control */
-.segment-control {
+.huge-viewport {
+  flex: 1; /* Chiếm toàn bộ phần còn lại của màn hình */
+  background: #e2e8f0; /* Màu nền hơi tối hơn panel để ảnh nổi bật */
+  background-image: 
+    linear-gradient(45deg, #cbd5e1 25%, transparent 25%), 
+    linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #cbd5e1 75%), 
+    linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
   display: flex;
-  background: var(--bg-app);
-  padding: 4px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
-.segment-btn {
-  padding: 6px 16px;
-  border: none; background: transparent;
-  border-radius: 6px;
-  font-size: 0.85rem; font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer; transition: all 0.2s;
-}
-.segment-btn:hover { color: var(--text-primary); }
-.segment-btn.active {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-/* Canvas Container */
-.canvas-container {
-  flex: 1;
-  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="10" height="10" fill="%230f172a"/><rect x="10" width="10" height="10" fill="%231e293b"/><rect y="10" width="10" height="10" fill="%231e293b"/><rect x="10" y="10" width="10" height="10" fill="%230f172a"/></svg>');
-  display: flex; justify-content: center; align-items: center;
+  justify-content: center;
+  align-items: center;
   padding: 24px;
   overflow: hidden;
 }
+
+.canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 #canvasDisplay {
   max-width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
-  border-radius: 4px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  max-height: 100%;
+  object-fit: contain; /* Đảm bảo hình luôn nằm trọn trong khung và không bị méo */
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  background: white; /* Nền trắng cho ảnh nếu ảnh có nền trong suốt */
 }
 
 /* ============================================
    Buttons
    ============================================ */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 10px 20px; border-radius: var(--radius-sm);
-  font-size: 0.9rem; font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 8px 20px; border-radius: var(--radius-md);
+  font-size: 1rem; font-weight: 600; cursor: pointer;
   border: 1px solid transparent; transition: all 0.2s;
 }
-.btn-sm { padding: 8px 16px; font-size: 0.85rem; }
-.w-full { width: 100%; }
-
 .btn-primary { background: var(--accent); color: white; }
 .btn-primary:hover { background: var(--accent-hover); }
 
-.btn-secondary { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border); }
-.btn-secondary:hover { background: var(--border-focus); }
+.btn-outline { background: white; color: var(--text-main); border-color: var(--border-color); }
+.btn-outline:hover { background: var(--bg-main); border-color: #cbd5e1; }
 
-/* Utilities */
 .hidden { display: none !important; }
-
-/* Responsive */
-@media (max-width: 900px) {
-  .workspace-grid { grid-template-columns: 1fr; }
-  .viewport { min-height: 400px; }
-  #app-main { padding: 20px 16px; }
-  .upload-actions { flex-direction: column; }
-}
