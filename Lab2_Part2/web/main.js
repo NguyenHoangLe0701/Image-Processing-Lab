@@ -96,6 +96,14 @@ function initCamera() {
     audio: false
   };
 
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.error("getUserMedia is not supported or not in a secure context (HTTPS).");
+    loadingText.innerText = "Lỗi: Trình duyệt không hỗ trợ Camera hoặc đang dùng HTTP. Yêu cầu dùng HTTPS hoặc localhost!";
+    loadingText.style.color = "#ff4444";
+    document.querySelector('.spinner').style.display = 'none';
+    return;
+  }
+
   navigator.mediaDevices.getUserMedia(constraints)
     .then(function(stream) {
       video.srcObject = stream;
