@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wavelet Studio — So Sánh Tương Đồng Hình Ảnh</title>
+  <meta name="description" content="Ứng dụng so sánh tương đồng hình ảnh sử dụng biến đổi Wavelet và khoảng cách Hamming. Bài thực hành 4 — Xử lý ảnh." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Ambient background blobs ── -->
+  <div class="ambient">
+    <div class="blob blob--warm"></div>
+    <div class="blob blob--cool"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- HEADER                                                 -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <header class="header">
+    <div class="header__logo">
+      <span class="header__icon">🌊</span>
+      <span class="header__name">Wavelet Studio</span>
+    </div>
+    <nav class="header__nav">
+      <a href="#upload" class="header__link">So sánh</a>
+      <a href="#how" class="header__link">Cách hoạt động</a>
+      <a href="https://github.com" target="_blank" rel="noopener" class="header__link header__link--ext">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- HERO                                                   -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section class="hero">
+      <p class="hero__badge">Bài thực hành 4 · Xử lý ảnh</p>
+      <h1 class="hero__title">
+        So sánh tương đồng hình ảnh<br />
+        <span class="hero__accent">bằng Wavelet Hashing</span>
+      </h1>
+      <p class="hero__desc">
+        Tải lên hai hình ảnh — hệ thống sẽ phân tích bằng biến đổi Wavelet rời rạc,
+        tạo mã băm nhị phân và tính khoảng cách Hamming để đánh giá mức độ tương đồng.
+      </p>
+      <a href="#upload" class="hero__cta">Bắt đầu so sánh ↓</a>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- UPLOAD SECTION                                         -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section id="upload" class="section upload-section">
+      <div class="section__header">
+        <span class="section__number">01</span>
+        <h2 class="section__title">Tải ảnh lên</h2>
+      </div>
+
+      <div class="upload-grid">
+        <!-- Drop zone 1 -->
+        <div class="dropzone" id="dropzone1" tabindex="0">
+          <input type="file" id="fileInput1" accept="image/*" hidden />
+          <div class="dropzone__placeholder" id="placeholder1">
+            <div class="dropzone__icon">
+              <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M3 16l5-7 4 5 3-3 5 7H3z" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="17.5" cy="6.5" r="2.5"/>
+              </svg>
+            </div>
+            <p class="dropzone__text">Kéo thả ảnh vào đây</p>
+            <p class="dropzone__hint">hoặc nhấn để chọn file</p>
+          </div>
+          <img class="dropzone__preview" id="preview1" alt="Ảnh 1" />
+          <button class="dropzone__clear" id="clear1" hidden title="Xóa ảnh">✕</button>
+          <span class="dropzone__label">Ảnh 1</span>
+        </div>
+
+        <!-- VS badge -->
+        <div class="vs-badge">VS</div>
+
+        <!-- Drop zone 2 -->
+        <div class="dropzone" id="dropzone2" tabindex="0">
+          <input type="file" id="fileInput2" accept="image/*" hidden />
+          <div class="dropzone__placeholder" id="placeholder2">
+            <div class="dropzone__icon">
+              <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M3 16l5-7 4 5 3-3 5 7H3z" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="17.5" cy="6.5" r="2.5"/>
+              </svg>
+            </div>
+            <p class="dropzone__text">Kéo thả ảnh vào đây</p>
+            <p class="dropzone__hint">hoặc nhấn để chọn file</p>
+          </div>
+          <img class="dropzone__preview" id="preview2" alt="Ảnh 2" />
+          <button class="dropzone__clear" id="clear2" hidden title="Xóa ảnh">✕</button>
+          <span class="dropzone__label">Ảnh 2</span>
+        </div>
+      </div>
+
+      <!-- Settings row -->
+      <div class="settings-row">
+        <label class="setting" for="waveletSelect">
+          <span class="setting__label">Wavelet</span>
+          <select id="waveletSelect" class="setting__select">
+            <option value="haar" selected>Haar</option>
+            <option value="db2">Daubechies-2</option>
+            <option value="db4">Daubechies-4</option>
+            <option value="sym2">Symlet-2</option>
+            <option value="coif1">Coiflet-1</option>
+            <option value="bior1.3">Biorthogonal 1.3</option>
+          </select>
+        </label>
+        <button id="compareBtn" class="btn-compare" disabled>
+          <span class="btn-compare__text">So sánh</span>
+          <span class="btn-compare__loader" hidden></span>
+        </button>
+        <button id="compareAllBtn" class="btn-secondary" disabled>
+          So sánh tất cả wavelet
+        </button>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- LOADING STATE                                          -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section id="loadingState" class="section loading-state" hidden>
+      <div class="loader-ring"></div>
+      <p class="loading-state__text" id="loadingText">Đang xử lý...</p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- RESULTS SECTION                                        -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section id="results" class="section results" hidden>
+      <div class="section__header">
+        <span class="section__number">02</span>
+        <h2 class="section__title">Kết quả</h2>
+      </div>
+
+      <!-- Verdict card -->
+      <div class="verdict-card" id="verdictCard">
+        <div class="verdict__meter">
+          <svg class="verdict__ring" viewBox="0 0 120 120">
+            <circle class="verdict__ring-bg" cx="60" cy="60" r="52" />
+            <circle class="verdict__ring-fill" id="similarityRing" cx="60" cy="60" r="52" />
+          </svg>
+          <span class="verdict__pct" id="similarityPct">0%</span>
+        </div>
+        <div class="verdict__info">
+          <span class="verdict__badge" id="verdictBadge">—</span>
+          <p class="verdict__detail" id="verdictDetail"></p>
+          <div class="verdict__stats">
+            <div class="stat">
+              <span class="stat__value" id="statDistance">—</span>
+              <span class="stat__label">Hamming Distance</span>
+            </div>
+            <div class="stat">
+              <span class="stat__value" id="statBits">—</span>
+              <span class="stat__label">Tổng bit</span>
+            </div>
+            <div class="stat">
+              <span class="stat__value" id="statWavelet">—</span>
+              <span class="stat__label">Wavelet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wavelet decomposition -->
+      <div class="panel">
+        <h3 class="panel__title">Phân tích Wavelet</h3>
+        <p class="panel__desc">Biến đổi DWT phân tách ảnh thành 4 thành phần tần số</p>
+        <div class="wavelet-compare">
+          <div class="wavelet-col">
+            <h4 class="wavelet-col__heading">Ảnh 1</h4>
+            <div class="wavelet-grid" id="wavelet1"></div>
+          </div>
+          <div class="wavelet-col">
+            <h4 class="wavelet-col__heading">Ảnh 2</h4>
+            <div class="wavelet-grid" id="wavelet2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hash comparison -->
+      <div class="panel">
+        <h3 class="panel__title">So sánh mã băm</h3>
+        <p class="panel__desc">Mỗi pixel đại diện 1 bit hash — trắng = 1, đen = 0. Pixel đỏ = khác biệt.</p>
+        <div class="hash-compare">
+          <figure class="hash-fig">
+            <img id="hash1Img" alt="Hash ảnh 1" />
+            <figcaption>Hash ảnh 1</figcaption>
+          </figure>
+          <figure class="hash-fig">
+            <img id="hashDiffImg" alt="Khác biệt" />
+            <figcaption>Vị trí khác biệt</figcaption>
+          </figure>
+          <figure class="hash-fig">
+            <img id="hash2Img" alt="Hash ảnh 2" />
+            <figcaption>Hash ảnh 2</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <!-- Multi-wavelet results -->
+      <div class="panel" id="multiPanel" hidden>
+        <h3 class="panel__title">So sánh các loại Wavelet</h3>
+        <p class="panel__desc">Thử nhiều phương pháp băm wavelet để so sánh hiệu suất</p>
+        <div class="multi-table-wrap">
+          <table class="multi-table" id="multiTable">
+            <thead>
+              <tr>
+                <th>Wavelet</th>
+                <th>Hamming Distance</th>
+                <th>Similarity</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="multiBody"></tbody>
+          </table>
+        </div>
+        <div class="multi-chart" id="multiChart"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- HOW IT WORKS                                           -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section id="how" class="section how-section">
+      <div class="section__header">
+        <span class="section__number">03</span>
+        <h2 class="section__title">Cách hoạt động</h2>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step__num">1</div>
+          <div class="step__body">
+            <h3>Tiền xử lý</h3>
+            <p>Chuyển ảnh sang grayscale và resize về 256×256 pixel để chuẩn hóa đầu vào.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step__num">2</div>
+          <div class="step__body">
+            <h3>Biến đổi Wavelet (DWT)</h3>
+            <p>Phân tích ảnh thành 4 sub-band: <strong>cA</strong> (xấp xỉ), <strong>cH</strong> (ngang), <strong>cV</strong> (dọc), <strong>cD</strong> (chéo) bằng PyWavelets.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step__num">3</div>
+          <div class="step__body">
+            <h3>Tạo mã băm</h3>
+            <p>Lượng tử hóa hệ số cA: giá trị ≥ trung bình → <code>1</code>, ngược lại → <code>0</code>. Kết quả là chuỗi 4096 bit.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step__num">4</div>
+          <div class="step__body">
+            <h3>Khoảng cách Hamming</h3>
+            <p>Đếm số bit khác nhau giữa 2 hash. Ít bit khác → ảnh tương tự. Nhiều bit khác → ảnh khác biệt.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!-- FOOTER                                                 -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <p>Bài thực hành 4 — Xử Lý Ảnh · Wavelet Image Similarity</p>
+    <p class="footer__sub">Built with Flask + PyWavelets · Deployed on Vercel</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
