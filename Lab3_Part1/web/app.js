@@ -74,15 +74,31 @@
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      const b64 = e.target.result;
-      previewImg.src = b64;
-      zone.classList.add('has-image');
-      zone.querySelector('.dropzone__clear').hidden = false;
-      if (slot === 1) image1Data = b64;
-      else image2Data = b64;
-      updateButtons();
-      // Hide results when image changes
-      resultsEl.hidden = true;
+      const rawB64 = e.target.result;
+      previewImg.src = rawB64; // Hiển thị ảnh gốc trên giao diện
+      
+      // Resize ảnh xuống 256x256 trước khi lưu data để gửi API (Fix lỗi 413 Vercel)
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        // Vẽ ảnh thu nhỏ lên canvas
+        ctx.drawImage(img, 0, 0, 256, 256);
+        // Lấy chuỗi base64 đã nén (định dạng JPEG để giảm dung lượng thêm)
+        const resizedB64 = canvas.toDataURL('image/jpeg', 0.8);
+        
+        zone.classList.add('has-image');
+        zone.querySelector('.dropzone__clear').hidden = false;
+        
+        if (slot === 1) image1Data = resizedB64;
+        else image2Data = resizedB64;
+        
+        updateButtons();
+        resultsEl.hidden = true;
+      };
+      img.src = rawB64;
     };
     reader.readAsDataURL(file);
   }
