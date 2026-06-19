@@ -1,144 +1,99 @@
-# Implementation Plan: Wavelet Image Similarity
+# Kế Hoạch Triển Khai (Implementation Plan) & AI Handoff
 
 ---
 
-## 1. Thông Tin Dự Án
+> 🤖 **AI HANDOFF PROMPT 1 (Dành cho Ứng dụng Web):**
+> *"Tôi cần viết một ứng dụng web xử lý ảnh có tên Wavelet Studio bằng **Flask (Backend)** và **HTML/CSS/Vanilla JS (Frontend)**. 
+> Mục tiêu: So sánh ảnh bằng **Wavelet Transform (DWT mức 4)** và **Khoảng cách Hamming**.
+> Quy tắc Backend (`api/index.py`): Nhận JSON chứa ảnh Base64. Cấu hình DWT_LEVEL=4, IMG_SIZE=(256,256). Các mức Threshold: EXACT >= 0.85, SIMILAR >= 0.65. Thuật toán tạo mã băm: Xấp xỉ cA so sánh với `median(cA)`. Các mảng chi tiết cH, cV, cD lấy giá trị tuyệt đối rồi so sánh với `median(abs(cH))` tương ứng để đánh dấu cấu trúc đường nét. API trả về các ảnh sub-bands dưới dạng Base64. Các routes gồm: `/api/compare`, `/api/compare-wavelets`, `/api/search` (tìm ảnh trong thư mục `database/`), `/api/samples`.
+> Quy tắc Frontend (`app.js`): Khi tải ảnh, phải dùng `<canvas>` resize ảnh về đúng 256x256 và xuất ra `image/jpeg` (quality 0.8) base64 TRƯỚC KHI gửi payload đi để chống nghẽn mạng. Dùng fetch gọi API và render kết quả DOM thuần (không React/Vue).*
 
-| Mục           | Chi tiết              |
-| ------------- | --------------------- |
-| **Ngôn ngữ**  | Python 3, JavaScript (ES6) |
-| **Framework** | Flask (Backend)       |
-| **Xử lý ảnh** | PyWavelets, NumPy, Pillow |
-| **Frontend**  | HTML5, CSS3 (vanilla), JS thuần |
-| **Đóng gói / Deploy** | Vercel Serverless Function |
-
-> **Hướng dẫn Prompt cho AI khác (AI Handoff Prompt):**
-> *"Tôi cần xây dựng một ứng dụng web xử lý ảnh bằng Flask và HTML/JS thuần. Dự án tên là Wavelet Studio. Ứng dụng sử dụng thuật toán biến đổi Wavelet (DWT 2D mức 4) và khoảng cách Hamming để tìm ra sự tương đồng giữa 2 hình ảnh. Cấu trúc dự án bao gồm thư mục `web/` chứa file `index.html`, `style.css`, `app.js` cho frontend, và `api/index.py` cho Flask backend. Server không lưu trữ ảnh upload mà frontend sẽ mã hóa Base64 và gửi qua JSON REST API. Ứng dụng cũng hỗ trợ tìm kiếm ảnh tương đồng trong một thư mục `database/`. Ứng dụng cần hỗ trợ deploy serverless qua `vercel.json`."*
+> 🤖 **AI HANDOFF PROMPT 2 (Dành cho File Jupyter Notebook Lab 4):**
+> *"Đóng vai là một chuyên gia Xử lý ảnh bằng Python. Hãy giúp tôi viết code hoàn chỉnh cho một Jupyter Notebook giải quyết bài tập **"So Sánh Sự Tương Đồng Của Các Hình Ảnh Sử Dụng Wavelet (Perceptual Hashing)"**. Yêu cầu sử dụng: `OpenCV/Pillow`, `PyWavelets`, `numpy`, `scikit-learn` và `matplotlib`.
+> **Phần 1: Chuẩn bị dữ liệu:** Viết hàm đọc ảnh, chuyển sang Grayscale và resize về kích thước chuẩn (VD: 256x256). Tự động tải tập dữ liệu gồm cặp ảnh tương tự và không tương tự.
+> **Phần 2: Trích xuất Wavelet & Tạo mã băm:** Dùng `pywt.wavedec2` (Level 4, 'haar') chuyển đổi ảnh thành ma trận wavelet. Binarize: cA so sánh với `median(cA)`; cH, cV, cD lấy trị tuyệt đối rồi so sánh với `median(abs)`. Duỗi thẳng và nối thành vector nhị phân 1D.
+> **Phần 3: So sánh hàm băm:** Tính **Khoảng cách Hamming** giữa 2 mã băm suy ra % tương thích.
+> **Phần 4: Đánh giá:** So sánh các cặp ảnh. Dùng `scikit-learn` tính **Độ chính xác (Accuracy)**, **Độ nhạy (Recall)**, **Độ đặc hiệu (Specificity)**. Vẽ **Đường cong ROC** và tính AUC.
+> **Phần 5: Bài tập nâng cao:** 1. Chạy lặp qua nhiều hàm Wavelet (haar, db2, sym2...) để lập bảng so sánh hiệu suất. 2. Ứng dụng **Image Search 1:N**: Nhận 1 ảnh truy vấn và tìm top 3 ảnh giống nhất trong DB, hiển thị bằng lưới matplotlib."*
 
 ---
 
-## 2. Cấu Trúc Thư Mục Thực Tế
+## 1. Cấu Trúc Dự Án (Project Structure)
+
+Dự án bao gồm phần ứng dụng Web và phần thử nghiệm thuật toán (Jupyter Notebook):
 
 ```text
 Lab3_Part1/
-│
 ├── web/
 │   ├── api/
-│   │   └── index.py            # API Backend chính (Flask), chứa logic Wavelet
-│   ├── app.js                  # Frontend logic (xử lý UI, gọi API)
-│   ├── index.html              # Giao diện chính của ứng dụng
-│   ├── style.css               # Styling cho giao diện (Vanilla CSS)
+│   │   └── index.py            # API Server (Flask), chứa thuật toán cốt lõi
+│   ├── database/               # Thư mục chứa ảnh mẫu (jpg/png) cho tính năng Image Search
+│   ├── app.js                  # Frontend Logic (Xử lý upload, canvas resize, fetch API)
+│   ├── index.html              # UI chính
+│   ├── style.css               # Vanilla CSS
 │   ├── requirements.txt        # Các thư viện Python (Flask, Numpy, PyWavelets, Pillow)
-│   └── vercel.json             # Cấu hình deploy Vercel
+│   └── vercel.json             # Cấu hình deploy serverless Vercel
 │
-├── database/                   # Thư mục chứa các ảnh mẫu dùng để tìm kiếm (Image Search)
-├── data/                       # Chứa dataset gốc nghiệm thu
-├── notebooks/                  # Các file Jupyter (Pynb) để thử nghiệm thuật toán
-└── docs/                       # Tài liệu dự án
+├── notebooks/
+│   └── lab4_wavelet_hashing.ipynb # File notebook bài Lab 4: Dùng để thử nghiệm, chạy nháp thuật toán Wavelet Hashing trước khi đưa vào web
+└── data/                       # Dữ liệu ảnh đầu vào/đầu ra để chạy thử nghiệm nghiệm thu
 ```
 
 ---
 
-## 3. Chi Tiết Các Route Flask (`web/api/index.py`)
+## 2. Chi Tiết Thuật Toán (Core Logic)
 
-| Route                   | Method | Payload (JSON) | Mô tả                                                     |
-| ----------------------- | ------ | -------------- | --------------------------------------------------------- |
-| `/` và `/<path:path>`   | GET    | -              | Phục vụ file tĩnh (HTML, CSS, JS) khi chạy local. Vercel tự xử lý. |
-| `/api/compare`          | POST   | `image1`, `image2`, `wavelet` | Decode base64, tính toán Wavelet & Hash, trả về % giống nhau, khoảng cách Hamming và các ảnh sub-bands. |
-| `/api/compare-wavelets` | POST   | `image1`, `image2` | Lặp qua danh sách Wavelets được hỗ trợ (haar, db2, sym2...) để so sánh và trả về mảng kết quả. |
-| `/api/search`           | POST   | `query_image`, `wavelet` | Lặp qua thư mục `database/`, tính hash từng ảnh và so sánh với query image, trả về danh sách top kết quả tốt nhất. |
-| `/api/samples`          | GET    | -              | Trả về tên vài file ngẫu nhiên từ `database/` để người dùng test. |
+### 2.1. Tiền Xử Lý Ảnh (Pillow + Numpy)
+- Backend nhận Base64, dùng Pillow chuyển sang `Grayscale ('L')`.
+- Resize ảnh về chuẩn `256x256` bằng thuật toán `LANCZOS` để giữ tối đa chi tiết.
+- Chuyển thành ma trận `numpy.ndarray`.
 
----
+### 2.2. Biến Đổi Wavelet
+- Hàm `pywt.wavedec2(img, wavelet, level=4)`:
+  - Phân rã ảnh qua 4 cấp. Ma trận cuối cùng có kích thước `16x16`.
+  - Trả về `cA` (Xấp xỉ) và tuple `(cH, cV, cD)` (Chi tiết ngang, dọc, chéo).
 
-## 4. Giải Thuật Cốt Lõi (Thuật Toán Wavelet Hashing)
+### 2.3. Lượng Tử Hóa - Tạo Hash 1024-bit
+Thuật toán nhị phân hóa khác biệt để tăng tính chính xác:
+1. **Với mảng cA**: `hash_A = cA > np.median(cA)`.
+2. **Với mảng cH, cV, cD**: Lấy độ lớn (Absolute) rồi so sánh với Median của độ lớn đó. Kỹ thuật này chỉ lấy các "đường nét" mạnh nhất bất kể âm hay dương:
+   `hash_H = np.abs(cH) > np.median(np.abs(cH))`
+3. Duỗi thẳng (flatten) và nối 4 mảng thành 1 vector nhị phân 1D (độ dài 256 x 4 = 1024 bits).
 
-### 4.1. Tiền Xử Lý Ảnh
-```python
-def decode_image(b64_string: str):
-    # Nhận chuỗi Base64 từ Frontend -> Đọc bằng Pillow
-    # 1. Chuyển thành ảnh xám (convert 'L')
-    # 2. Resize chuẩn về kích thước 256x256 bằng LANCZOS
-    # 3. Trả về Numpy Array 2D
-```
-
-### 4.2. Trích Xuất Wavelet
-```python
-def extract_wavelet(img, wavelet='haar', level=4):
-    # Dùng hàm pywt.wavedec2() để biến đổi ảnh 2D qua 4 cấp.
-    # Trả về các hệ số: Xấp xỉ (cA) và Chi tiết (cH, cV, cD) của cấp cuối.
-```
-
-### 4.3. Tạo Image Hash (Mã Băm)
-```python
-def create_hash(coeffs):
-    # Nhận các ma trận cA, cH, cV, cD
-    # 1. So sánh từng pixel trong cA với giá trị Median(cA) -> Trích xuất bố cục tổng thể.
-    # 2. Lấy Absolute(cH), Absolute(cV), Absolute(cD) và so sánh với Median của chính nó -> Trích xuất vị trí cạnh/kết cấu nét mạnh nhất.
-    # 3. Nối (Concatenate) 4 ma trận nhị phân này lại thành vector 1 chiều (1024 bits).
-```
-
-### 4.4. Tính Khoảng Cách Hamming
-```python
-def hamming(hash1, hash2):
-    # dist = số lượng bit khác nhau giữa hash1 và hash2
-    # similarity = 1 - (dist / tổng số bit)
-    # Trả về dist và sim
-```
+### 2.4. So Sánh Hamming
+- `distance = np.sum(hash1 != hash2)`
+- `similarity = 1.0 - (distance / 1024)`
 
 ---
 
-## 5. Luồng Dữ Liệu Frontend ↔ Backend
+## 3. Các API Endpoints (`web/api/index.py`)
 
-```text
-User kéo thả / tải ảnh 1 và ảnh 2 trên UI (HTML)
-        │
-        ▼
-Javascript FileReader đọc file thành chuỗi "data:image/png;base64,..."
-        │
-        ▼
-JS gom chuỗi base64 và tên loại Wavelet vào object JSON
-        │
-        ▼
-Gửi HTTP POST đến "/api/compare" bằng `fetch()`
-        │
-        ▼
-[FLASK APP] 
-  1. Decode JSON -> Lấy base64 string
-  2. Xử lý thuật toán Wavelet 
-  3. Encode các ảnh trung gian (cA, cH, mã băm) ngược lại thành Base64
-  4. Trả kết quả { similarity_pct, image1_info, image2_info... } dạng JSON
-        │
-        ▼
-Javascript nhận JSON response, render % kết quả lên biểu đồ vòng (Circular Progress), vẽ lưới ảnh Sub-band lên UI.
-```
+| Route | Payload (JSON) | Chức năng |
+|---|---|---|
+| `POST /api/compare` | `image1`, `image2`, `wavelet` | Tính toán wavelet, hash, trả về similarity %, match_level (exact/similar/none) và các hình ảnh base64 (cA, cH, cV, cD, diff_preview). |
+| `POST /api/compare-wavelets`| `image1`, `image2` | Lặp qua mảng wavelet hỗ trợ (haar, db2, db4, sym2...) để so sánh và trả về array kết quả. |
+| `POST /api/search` | `query_image`, `wavelet` | Đọc toàn bộ ảnh trong `database/`, tính hash từng ảnh, so sánh với query image, trả về tối đa 48 ảnh giống nhất. |
+| `GET /api/samples` | - | Trả về mảng tên file ngẫu nhiên (max 8) từ database để test UI. |
 
 ---
 
-## 6. Cấu Hình Triển Khai (Deployment)
+## 4. Frontend Implementation (`web/app.js`)
 
-### 6.1. requirements.txt
-Sử dụng các phiên bản thư viện cố định để tránh lỗi trên Vercel:
-```text
-flask==3.1.*
-numpy==1.26.*
-PyWavelets==1.8.*
-Pillow==11.*
-```
+1. **Khắc phục lỗi dung lượng:** Hàm `handleFile` khi đọc ảnh bằng FileReader sẽ load vào 1 object `Image()`, sau đó vẽ lên `<canvas width="256" height="256">`. Cuối cùng xuất ra `canvas.toDataURL('image/jpeg', 0.8)`. Bắt buộc phải làm bước này để tránh lỗi Payload Too Large khi triển khai serverless.
+2. **Quản lý trạng thái:** Dùng các biến toàn cục `image1Data`, `image2Data`, `searchImageData` để lưu Base64 chuẩn bị submit.
+3. **DOM Rendering:** Tự động build DOM grid từ mảng kết quả của `/api/search` (bao gồm filename, distance, similarity %). Đổi màu badge (xanh lá/vàng/đỏ) dựa vào `match_level`.
+4. **Visual UI:** Vòng cung SVG (Circle Progress) thể hiện tỷ lệ %; Các ô hình wavelet `cA, cH, cV, cD` lấy chuỗi "data:image/png;base64,..." gán thẳng vào thẻ `<img>`.
 
-### 6.2. vercel.json
-Cấu hình để Vercel biết cách chạy thư mục `api/` như một backend và phục vụ frontend tĩnh.
+---
+
+## 5. Triển Khai (Deployment)
+
+File `vercel.json` định tuyến các request:
 ```json
 {
   "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
+    { "src": "api/index.py", "use": "@vercel/python" },
+    { "src": "index.html", "use": "@vercel/static" }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" },
@@ -146,12 +101,4 @@ Cấu hình để Vercel biết cách chạy thư mục `api/` như một backen
   ]
 }
 ```
-
----
-
-## 7. Các Điểm Kỹ Thuật Đáng Chú Ý (Lưu ý cho AI / Dev)
-
-1. **Truyền Dữ Liệu Không Trạng Thái (Stateless Data Transfer):** Ảnh không bao giờ được lưu lại thành file `.jpg` trên server. Toàn bộ quá trình từ upload -> process -> response đều bằng chuỗi Base64 lưu trong RAM. Rất phù hợp với kiến trúc Serverless (Vercel).
-2. **Xử Lý Nhiễu Bằng Median:** Việc so sánh các hệ số DWT với giá trị Median giúp hệ thống chống chịu tốt trước những thay đổi về độ sáng, độ tương phản của ảnh.
-3. **CORS & Pathing:** File `index.py` được đặt trong thư mục `api/` để Vercel tự nhận diện đó là Serverless function. Code local cần có block `@app.route('/')` để serve frontend file.
-4. **Resampling Filter:** Dùng `Image.Resampling.LANCZOS` để chất lượng ảnh giảm kích thước (downscale) được sắc nét nhất trước khi chạy thuật toán Wavelet.
+File `requirements.txt` phải khóa phiên bản thư viện để tránh lỗi (VD: `numpy==1.26.*`, `flask==3.1.*`, `PyWavelets==1.8.*`).
