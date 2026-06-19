@@ -217,20 +217,34 @@
     const circumference = 2 * Math.PI * 52; // r=52
     const offset = circumference * (1 - c.similarity);
     ring.style.strokeDashoffset = offset;
-    ring.style.stroke = c.is_similar ? 'var(--success)' : 'var(--danger)';
-
+    
     // Animated percentage
     animateCounter($('#similarityPct'), 0, pct, 1000, (v) => v.toFixed(1) + '%');
 
     // Badge
     const badge = $('#verdictBadge');
-    badge.textContent = c.is_similar ? 'Tương tự' : 'Khác biệt';
-    badge.className = 'verdict__badge ' + (c.is_similar ? 'verdict__badge--similar' : 'verdict__badge--different');
+    let verdictClass, verdictText, verdictDetailText;
 
-    // Detail text
-    $('#verdictDetail').textContent = c.is_similar
-      ? `Hai ảnh có mức tương đồng ${pct}% — vượt ngưỡng ${(c.threshold * 100)}%, được xếp loại là tương tự.`
-      : `Hai ảnh chỉ tương đồng ${pct}% — dưới ngưỡng ${(c.threshold * 100)}%, được xếp loại là khác biệt.`;
+    if (c.match_level === 'exact') {
+      verdictText = 'Khớp hoàn toàn';
+      verdictClass = 'verdict__badge--similar';
+      verdictDetailText = `Hai ảnh có mức tương đồng ${pct}% (≥ 85%). Đây có thể là bản sao của nhau.`;
+      ring.style.stroke = 'var(--success)';
+    } else if (c.match_level === 'similar') {
+      verdictText = 'Tương tự (Có thể khác góc chụp)';
+      verdictClass = 'verdict__badge--warning';
+      verdictDetailText = `Hai ảnh có mức tương đồng ${pct}% (60% - 85%). Dù khác biệt về chi tiết, chúng có thể cùng chụp một đối tượng.`;
+      ring.style.stroke = 'var(--warning)';
+    } else {
+      verdictText = 'Khác biệt';
+      verdictClass = 'verdict__badge--different';
+      verdictDetailText = `Hai ảnh chỉ tương đồng ${pct}% (< 60%). Đây là hai bức ảnh khác nhau hoàn toàn.`;
+      ring.style.stroke = 'var(--danger)';
+    }
+
+    badge.textContent = verdictText;
+    badge.className = 'verdict__badge ' + verdictClass;
+    $('#verdictDetail').textContent = verdictDetailText;
 
     // Stats
     $('#statDistance').textContent = c.hamming_distance.toLocaleString();
@@ -407,8 +421,18 @@
     results.forEach(r => {
       const item = document.createElement('div');
       item.className = 'search-item fade-in';
-      const simColor = r.is_match ? 'var(--success)' : 'var(--accent)';
-      const isMatchLabel = r.is_match ? '<span class="search-item__match">Khớp</span>' : '';
+      
+      let simColor, isMatchLabel;
+      if (r.match_level === 'exact') {
+        simColor = 'var(--success)';
+        isMatchLabel = '<span class="search-item__match">Bản sao</span>';
+      } else if (r.match_level === 'similar') {
+        simColor = 'var(--warning)';
+        isMatchLabel = '<span class="search-item__match" style="background:var(--warning-dim);color:var(--warning)">Tương tự</span>';
+      } else {
+        simColor = 'var(--accent)';
+        isMatchLabel = '';
+      }
       
       item.innerHTML = `
         <img src="/database/${r.filename}" alt="${r.filename}" loading="lazy" />

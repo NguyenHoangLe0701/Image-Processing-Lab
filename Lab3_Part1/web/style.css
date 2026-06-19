@@ -24,7 +24,9 @@
   --text-3:      #636379;
 
   --success:     #22c55e;
-  --success-dim: rgba(34,197,94,.12);
+  --success-dim: rgba(16, 185, 129, 0.15);
+  --warning:     #f5a623;
+  --warning-dim: rgba(245, 166, 35, 0.15);
   --danger:      #ef4444;
   --danger-dim:  rgba(239,68,68,.12);
 
@@ -424,6 +426,10 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .verdict__badge--different {
   color: var(--danger);
   background: var(--danger-dim);
+}
+.verdict__badge--warning {
+  color: var(--warning);
+  background: var(--warning-dim);
 }
 .verdict__detail {
   font-size: .92rem; color: var(--text-2);

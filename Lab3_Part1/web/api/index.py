@@ -17,7 +17,8 @@ app = Flask(__name__)
 # ── Cấu hình ──────────────────────────────────────────────
 IMG_SIZE = (256, 256)
 DWT_LEVEL = 2
-SIMILARITY_THRESHOLD = 0.80
+EXACT_THRESHOLD = 0.85
+SIMILAR_THRESHOLD = 0.60
 SUPPORTED_WAVELETS = ['haar', 'db2', 'db4', 'sym2', 'coif1', 'bior1.3']
 DATABASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'database')
 
@@ -120,24 +121,31 @@ def compare():
             'success': True,
             'image1': {
                 'grayscale': array_to_data_url(img1),
-                'wavelet': subbands_to_images(coeffs1),
-                'hash_preview': array_to_data_url(h1_img),
-            },
-            'image2': {
-                'grayscale': array_to_data_url(img2),
-                'wavelet': subbands_to_images(coeffs2),
-                'hash_preview': array_to_data_url(h2_img),
-            },
+        img1_info = {
+            'grayscale': array_to_data_url(img1),
+            'wavelet': subbands_to_images(coeffs1),
+            'hash_preview': array_to_data_url(h1_img),
+        }
+        img2_info = {
+            'grayscale': array_to_data_url(img2),
+            'wavelet': subbands_to_images(coeffs2),
+            'hash_preview': array_to_data_url(h2_img),
+        }
+
+        return jsonify({
+            'success': True,
+            'image1': img1_info,
+            'image2': img2_info,
             'comparison': {
-                'hamming_distance': dist,
-                'similarity': round(sim, 6),
-                'similarity_pct': round(sim * 100, 2),
-                'total_bits': int(len(hash1)),
-                'is_similar': sim >= SIMILARITY_THRESHOLD,
-                'threshold': SIMILARITY_THRESHOLD,
-                'diff_preview': array_to_data_url(diff),
                 'wavelet_used': wavelet,
-            },
+                'hamming_distance': int(dist),
+                'total_bits': len(hash1),
+                'similarity': float(sim),
+                'similarity_pct': round(sim * 100, 2),
+                'is_similar': sim >= SIMILAR_THRESHOLD,
+                'match_level': 'exact' if sim >= EXACT_THRESHOLD else ('similar' if sim >= SIMILAR_THRESHOLD else 'none'),
+                'diff_preview': array_to_data_url(diff)
+            }
         })
     except KeyError as e:
         return jsonify({'success': False, 'error': f'Thiếu trường: {e}'}), 400
@@ -214,7 +222,7 @@ def search():
                         'filename': filename,
                         'similarity': round(sim * 100, 2),
                         'distance': dist,
-                        'is_match': sim >= SIMILARITY_THRESHOLD
+                        'match_level': 'exact' if sim >= EXACT_THRESHOLD else ('similar' if sim >= SIMILAR_THRESHOLD else 'none')
                     })
                 except Exception as e:
                     print(f"Lỗi khi xử lý ảnh {filename}: {e}")
@@ -222,6 +230,14 @@ def search():
         
         # Sắp xếp danh sách kết quả theo độ tương đồng giảm dần
         results.sort(key=lambda x: x['similarity'], reverse=True)
+        
+        # Lọc bớt kết quả, chỉ trả về top 20 hoặc những ảnh có sự tương đồng nhất định
+        filtered_results = [r for r in results if r['match_level'] != 'none']
+        if len(filtered_results) == 0:
+            # Nếu không có gì khớp, trả về 4 cái gần nhất để UI không trống
+            results = results[:4]
+        else:
+            results = filtered_results[:20]
 
         return jsonify({
             'success': True,
