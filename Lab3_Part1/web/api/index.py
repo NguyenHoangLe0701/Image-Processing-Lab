@@ -227,8 +227,8 @@ def search():
         # Sắp xếp danh sách kết quả theo độ tương đồng giảm dần
         results.sort(key=lambda x: x['similarity'], reverse=True)
         
-        # Trả về top 24 ảnh có độ tương đồng cao nhất (kể cả khác biệt) để UI hiển thị đầy đủ
-        results = results[:24]
+        # Trả về top 48 ảnh để giao diện hiển thị thật nhiều ảnh (cả giống và khác) trông đẹp mắt như một thư viện
+        results = results[:48]
 
         return jsonify({
             'success': True,
