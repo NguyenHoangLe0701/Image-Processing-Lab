@@ -431,7 +431,7 @@
         isMatchLabel = '<span class="search-item__match" style="background:var(--warning-dim);color:var(--warning)">Tương tự</span>';
       } else {
         simColor = 'var(--accent)';
-        isMatchLabel = '';
+        isMatchLabel = '<span class="search-item__match" style="background:var(--danger-dim);color:var(--danger)">Khác biệt</span>';
       }
       
       item.innerHTML = `
