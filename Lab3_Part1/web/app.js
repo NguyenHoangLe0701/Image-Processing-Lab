@@ -25,9 +25,21 @@
   const loadingText = $('#loadingText');
   const resultsEl   = $('#results');
 
+  // Search DOM refs
+  const dropzoneSearch = $('#dropzoneSearch');
+  const fileInputSearch = $('#fileInputSearch');
+  const previewSearch = $('#previewSearch');
+  const placeholderSearch = $('#placeholderSearch');
+  const clearSearch = $('#clearSearch');
+  const searchBtn = $('#searchBtn');
+  const waveletSearchSelect = $('#waveletSearchSelect');
+  const searchResultsEl = $('#searchResults');
+  const searchGrid = $('#searchGrid');
+
   // Store base64 data
   let image1Data = null;
   let image2Data = null;
+  let searchImageData = null;
 
   // ── Dropzone setup ──────────────────────────────────────
   function setupDropzone(zone, input, previewImg, placeholderEl, clearBtn, slot) {
@@ -65,7 +77,8 @@
       clearBtn.hidden = true;
       input.value = '';
       if (slot === 1) image1Data = null;
-      else image2Data = null;
+      else if (slot === 2) image2Data = null;
+      else searchImageData = null;
       updateButtons();
     });
   }
@@ -93,10 +106,12 @@
         zone.querySelector('.dropzone__clear').hidden = false;
         
         if (slot === 1) image1Data = resizedB64;
-        else image2Data = resizedB64;
+        else if (slot === 2) image2Data = resizedB64;
+        else searchImageData = resizedB64;
         
         updateButtons();
-        resultsEl.hidden = true;
+        if (slot === 1 || slot === 2) resultsEl.hidden = true;
+        if (slot === 3 && searchResultsEl) searchResultsEl.hidden = true;
       };
       img.src = rawB64;
     };
@@ -107,10 +122,14 @@
     const ready = image1Data && image2Data;
     compareBtn.disabled = !ready;
     compareAllBtn.disabled = !ready;
+    if (searchBtn) searchBtn.disabled = !searchImageData;
   }
 
   setupDropzone(dropzone1, fileInput1, preview1, placeholder1, clear1, 1);
   setupDropzone(dropzone2, fileInput2, preview2, placeholder2, clear2, 2);
+  if (dropzoneSearch) {
+    setupDropzone(dropzoneSearch, fileInputSearch, previewSearch, placeholderSearch, clearSearch, 3);
+  }
 
   // ── Compare single wavelet ──────────────────────────────
   compareBtn.addEventListener('click', async () => {
@@ -340,6 +359,90 @@
 
   function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // ── Search logic ─────────────────────────────────────────
+  if (searchBtn) {
+    searchBtn.addEventListener('click', async () => {
+      if (!searchImageData) return;
+      showLoading('Đang tìm kiếm trong database...');
+      setSearchButtonLoading(true);
+
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query_image: searchImageData,
+            wavelet: waveletSearchSelect.value,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Unknown error');
+
+        hideLoading();
+        renderSearchResults(data.results);
+
+      } catch (err) {
+        hideLoading();
+        alert('Lỗi: ' + err.message);
+        console.error(err);
+      } finally {
+        setSearchButtonLoading(false);
+      }
+    });
+  }
+
+  function renderSearchResults(results) {
+    searchGrid.innerHTML = '';
+    
+    if (!results || results.length === 0) {
+      searchGrid.innerHTML = '<p style="color:var(--text-3);grid-column:1/-1;text-align:center;padding:20px;">Không có dữ liệu trong database.</p>';
+      searchResultsEl.hidden = false;
+      return;
+    }
+
+    results.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'search-item fade-in';
+      const simColor = r.is_match ? 'var(--success)' : 'var(--accent)';
+      const isMatchLabel = r.is_match ? '<span class="search-item__match">Khớp</span>' : '';
+      
+      item.innerHTML = `
+        <img src="/database/${r.filename}" alt="${r.filename}" loading="lazy" />
+        <div class="search-item__info">
+          <div class="search-item__name" title="${r.filename}">${r.filename}</div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:8px;">
+            <div>
+              <div style="font-size:.7rem; color:var(--text-3)">Khoảng cách: ${r.distance}</div>
+              ${isMatchLabel}
+            </div>
+            <div style="font-size:.9rem; font-weight:700; color:${simColor}">${r.similarity}%</div>
+          </div>
+        </div>
+      `;
+      searchGrid.appendChild(item);
+    });
+
+    searchResultsEl.hidden = false;
+    searchResultsEl.classList.add('fade-in');
+    searchResultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function setSearchButtonLoading(loading) {
+    const txt = searchBtn.querySelector('.btn-compare__text');
+    const loader = searchBtn.querySelector('.btn-compare__loader');
+    if (loading) {
+      txt.textContent = 'Đang tìm...';
+      loader.hidden = false;
+      searchBtn.disabled = true;
+    } else {
+      txt.textContent = 'Tìm kiếm';
+      loader.hidden = true;
+      updateButtons();
+    }
   }
 
 })();

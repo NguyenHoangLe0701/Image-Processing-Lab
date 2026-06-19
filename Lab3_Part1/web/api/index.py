@@ -19,6 +19,7 @@ IMG_SIZE = (256, 256)
 DWT_LEVEL = 2
 SIMILARITY_THRESHOLD = 0.85
 SUPPORTED_WAVELETS = ['haar', 'db2', 'db4', 'sym2', 'coif1', 'bior1.3']
+DATABASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'database')
 
 
 # ── Hàm tiện ích ──────────────────────────────────────────
@@ -158,6 +159,65 @@ def compare_wavelets():
             except Exception:
                 pass
         return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/search', methods=['POST'])
+def search():
+    """Tìm kiếm hình ảnh trong thư mục database/."""
+    try:
+        data = request.get_json(force=True)
+        query_image_b64 = data.get('query_image')
+        if not query_image_b64:
+            return jsonify({'success': False, 'error': 'Thiếu trường query_image'}), 400
+        
+        wavelet = data.get('wavelet', 'haar')
+        if wavelet not in SUPPORTED_WAVELETS:
+            wavelet = 'haar'
+
+        query_img = decode_image(query_image_b64)
+        query_coeffs = extract_wavelet(query_img, wavelet, DWT_LEVEL)
+        query_hash = create_hash(query_coeffs)
+
+        results = []
+        if not os.path.exists(DATABASE_DIR):
+            os.makedirs(DATABASE_DIR, exist_ok=True)
+            
+        for filename in os.listdir(DATABASE_DIR):
+            ext = filename.lower().split('.')[-1]
+            if ext in ['jpg', 'jpeg', 'png']:
+                filepath = os.path.join(DATABASE_DIR, filename)
+                try:
+                    # Đọc và thay đổi kích thước ảnh theo chuẩn
+                    db_img_pil = Image.open(filepath).convert('L')
+                    db_img_pil = db_img_pil.resize(IMG_SIZE, Image.Resampling.LANCZOS)
+                    db_img = np.array(db_img_pil)
+                    
+                    db_coeffs = extract_wavelet(db_img, wavelet, DWT_LEVEL)
+                    db_hash = create_hash(db_coeffs)
+                    
+                    dist, sim = hamming(query_hash, db_hash)
+                    
+                    results.append({
+                        'filename': filename,
+                        'similarity': round(sim * 100, 2),
+                        'distance': dist,
+                        'is_match': sim >= SIMILARITY_THRESHOLD
+                    })
+                except Exception as e:
+                    print(f"Lỗi khi xử lý ảnh {filename}: {e}")
+                    pass
+        
+        # Sắp xếp danh sách kết quả theo độ tương đồng giảm dần
+        results.sort(key=lambda x: x['similarity'], reverse=True)
+
+        return jsonify({
+            'success': True,
+            'results': results,
+            'wavelet_used': wavelet
+        })
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

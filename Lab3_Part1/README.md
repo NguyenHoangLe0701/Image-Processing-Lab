@@ -1,10 +1,52 @@
-# 🌊 Image Processing Lab: Wavelet Image Hashing
+# 🌊 Wavelet Studio: So sánh & Tìm kiếm hình ảnh bằng Wavelet Hashing
 
-Dự án này là bài tập thực hành môn Xử lý ảnh (Lab 4), tập trung vào kỹ thuật so sánh mức độ tương đồng giữa các hình ảnh sử dụng biến đổi Wavelet và khoảng cách Hamming.
+![Trạng thái](https://img.shields.io/badge/Trạng_thái-Hoàn_thành-success)
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Flask](https://img.shields.io/badge/Flask-2.0+-lightgrey)
+![HTML/CSS/JS](https://img.shields.io/badge/Frontend-Vanilla-orange)
 
-Dự án bao gồm hai phần chính:
-1. **Jupyter Notebook**: Phân tích và thử nghiệm thuật toán từng bước.
-2. **Web Application**: Giao diện trực quan cho phép người dùng tải ảnh lên và so sánh trực tiếp, được xây dựng bằng Flask và có thể deploy lên Vercel.
+Dự án này là ứng dụng thực hành môn Xử lý ảnh (Lab 4), tập trung vào kỹ thuật phân tích, so sánh mức độ tương đồng và tìm kiếm hình ảnh sử dụng **Biến đổi Wavelet (DWT)** kết hợp **Khoảng cách Hamming**.
+
+---
+
+## 📱 Quét mã QR để trải nghiệm
+
+<div align="center">
+  <img src="QR.jpg" alt="Mã QR Truy cập Wavelet Studio" width="250" />
+  <p><i>(Quét mã QR trên để mở ứng dụng Web)</i></p>
+</div>
+
+---
+
+## ✨ Các tính năng chính
+
+1. **So sánh hình ảnh (1:1)**
+   - Tải lên 2 bức ảnh bất kỳ để kiểm tra mức độ giống nhau.
+   - Hiển thị trực quan quá trình băm Wavelet (cA, cH, cV, cD).
+   - In ra khoảng cách Hamming và Tỷ lệ tương đồng (%) chính xác.
+   - So sánh sức mạnh của nhiều loại Wavelet khác nhau (Haar, Daubechies, Symlet, Coiflet...).
+
+2. **Tìm kiếm hình ảnh (1:N)**
+   - Tìm ra các bức ảnh giống với ảnh truy vấn nhất từ một kho dữ liệu (Database).
+   - Hệ thống tự động quét và tính toán khoảng cách Hamming với toàn bộ ảnh trong thư mục `web/database/`.
+   - Kết quả được sắp xếp trực quan theo độ tương đồng giảm dần.
+
+3. **Giao diện hiện đại (Dark Mode)**
+   - Giao diện người dùng (UI) thân thiện, chuyên nghiệp, hỗ trợ thao tác kéo-thả (Drag & Drop).
+
+---
+
+## 🛠 Công nghệ sử dụng (Tech Stack)
+
+**Phân tích thuật toán & Backend:**
+- **Python 3.10+**: Ngôn ngữ lập trình chính.
+- **PyWavelets (pywt)**: Thư viện cốt lõi để thực hiện biến đổi Wavelet rời rạc (DWT).
+- **NumPy**: Tính toán ma trận và mảng số học tốc độ cao.
+- **Flask**: Micro-framework xây dựng API server backend.
+- **Pillow (PIL)**: Đọc, chuyển đổi grayscale và thay đổi kích thước ảnh.
+
+**Frontend:**
+- **Vanilla HTML5, CSS3, JavaScript (ES6)**: Đảm bảo tốc độ tải trang nhanh nhất mà không cần phụ thuộc thư viện ngoài. CSS Grid & Flexbox cho bố cục Responsive.
 
 ---
 
@@ -12,79 +54,50 @@ Dự án bao gồm hai phần chính:
 
 ```text
 d:\Workspace\Xử Lý Ảnh\Lab3_Part1\
-├── data/
-│   └── input/
-│       ├── similar/       # Thư mục chứa các ảnh giống/tương tự nhau để test
-│       └── dissimilar/    # Thư mục chứa các ảnh hoàn toàn khác biệt để test
-├── docs/                  # Tài liệu giải thích code, kiến trúc, và pipeline
-│   ├── code_explanation.md
-│   ├── implement_plan.md
-│   ├── pipeline_diagram.png
-│   ├── problem_definition.md
-│   └── vercel_deployment.md  # Hướng dẫn deploy lên Vercel
+├── README.md              # Tài liệu dự án (bạn đang đọc)
+├── QR.jpg                 # Mã QR truy cập dự án
 ├── notebooks/             # Môi trường Jupyter Notebook
-│   └── lab4_wavelet_hashing.ipynb  # Notebook thực hành chính
-├── web/                   # Ứng dụng Web
+│   └── lab4_wavelet_hashing.ipynb  # Phân tích thuật toán từng bước
+├── web/                   # Ứng dụng Web chính
 │   ├── api/
-│   │   └── index.py       # Flask backend API
-│   ├── index.html         # Frontend HTML
+│   │   └── index.py       # Flask backend API (chứa logic băm và tìm kiếm)
+│   ├── database/          # Thư mục chứa hàng chục ảnh dùng cho chức năng Tìm kiếm (1:N)
+│   ├── index.html         # Giao diện chính của ứng dụng
 │   ├── style.css          # Giao diện CSS Dark mode
-│   ├── app.js             # Logic Frontend
+│   ├── app.js             # Logic Frontend gọi API và render giao diện
 │   ├── requirements.txt   # Các thư viện Python cần thiết
 │   └── vercel.json        # Cấu hình deploy Vercel
-└── rules.md               # Quy tắc hoạt động của hệ thống
 ```
 
 ---
 
-## 🚀 Cách chạy dự án trên máy tính cá nhân (Local)
+## 🧠 Tóm tắt quy trình hoạt động (Pipeline)
 
-### 1. Chạy Jupyter Notebook
+1. **Tiền xử lý**: Ảnh đầu vào được chuyển sang màu xám (Grayscale) và thay đổi kích thước chuẩn (256x256 pixel).
+2. **Biến đổi Wavelet (DWT)**: Phân tách đặc trưng tần số của ảnh, sử dụng thành phần xấp xỉ (Approximation - cA) để lấy dữ liệu quan trọng nhất.
+3. **Tạo mã băm (Hashing)**: Lượng tử hóa ma trận hệ số cA: nếu giá trị ≥ giá trị trung bình sẽ mang bit `1`, ngược lại mang bit `0`, tạo thành một chuỗi nhị phân (Hash).
+4. **So sánh Hamming**: Thuật toán đếm số bit khác biệt giữa các mã băm. Càng ít bit sai khác, tỷ lệ phần trăm tương đồng giữa hai ảnh càng cao.
 
-Cài đặt các thư viện cần thiết:
-```bash
-pip install numpy opencv-python PyWavelets scikit-learn matplotlib jupyter
-```
+---
 
-Mở notebook:
-```bash
-jupyter notebook notebooks/lab4_wavelet_hashing.ipynb
-```
-Notebook có thể tự tạo ảnh mẫu để chạy thử (synthetic data) nếu bạn chưa có sẵn ảnh trong thư mục `data`.
+## 🚀 Hướng dẫn cài đặt và chạy (Local)
 
-### 2. Chạy Web Application
-
-Cài đặt thư viện cho web app (sử dụng Pillow thay vì OpenCV để nhẹ hơn khi deploy):
+**Bước 1: Cài đặt thư viện**
+Di chuyển vào thư mục `web` và cài đặt các thư viện Python:
 ```bash
 cd web
 pip install -r requirements.txt
 ```
 
-Khởi động Flask server:
+**Bước 2: Chạy Server Flask**
+Khởi động ứng dụng backend:
 ```bash
 python api/index.py
 ```
 
-Truy cập địa chỉ `http://localhost:5000` trên trình duyệt để sử dụng ứng dụng.
+**Bước 3: Sử dụng**
+Mở trình duyệt web và truy cập địa chỉ: [http://localhost:5000](http://localhost:5000). 
+Ứng dụng có sẵn hàng chục ảnh ở mục `web/database` để bạn dễ dàng test chức năng Tìm kiếm (1:N).
 
 ---
-
-## 🌐 Trải nghiệm trực tuyến
-
-Phần Web App được thiết kế đặc biệt để có thể hoạt động hoàn hảo trên nền tảng **Vercel** dưới dạng Serverless Functions. Giao diện được thiết kế hiện đại, chuyên nghiệp, hỗ trợ Drag & Drop và hiển thị kết quả phân tích cực kỳ chi tiết bao gồm:
-- Tỷ lệ tương đồng (Similarity Percentage).
-- Khoảng cách Hamming.
-- Hình ảnh trực quan của các thành phần tần số Wavelet (cA, cH, cV, cD).
-- So sánh hiệu năng của nhiều loại Wavelet khác nhau (Haar, Daubechies, Symlet, Coiflet...).
-
-> 👉 **[Xem hướng dẫn chi tiết cách deploy dự án này lên Vercel hoàn toàn miễn phí tại đây](docs/vercel_deployment.md)**.
-
----
-
-## 🧠 Tóm tắt quy trình (Pipeline)
-
-1. **Tiền xử lý**: Ảnh được chuyển sang màu xám (grayscale) và thay đổi kích thước chuẩn (256x256).
-2. **Biến đổi Wavelet (DWT)**: Trích xuất các đặc trưng tần số của ảnh. Đặc biệt sử dụng thành phần xấp xỉ (Approximation - cA).
-3. **Tạo Hash**: Giá trị của các thành phần được so sánh với giá trị trung bình để tạo thành chuỗi nhị phân (mã băm).
-4. **So sánh Hamming**: Đếm số bit khác nhau giữa hai mã băm. Ít bit khác nhau đồng nghĩa với việc hai ảnh rất giống nhau.
-5. **Đánh giá**: Sử dụng các chỉ số như Accuracy, Sensitivity, Specificity và đường cong ROC để tìm ra ngưỡng (threshold) phân loại tối ưu.
+*Phát triển cho học phần Xử Lý Ảnh - Wavelet Image Similarity.*
