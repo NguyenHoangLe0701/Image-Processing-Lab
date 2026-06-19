@@ -12,7 +12,7 @@ Dự án này là ứng dụng thực hành môn Xử lý ảnh (Lab 4), tập t
 ## 📱 Quét mã QR để trải nghiệm
 
 <div align="center">
-  <img src="QR.jpg" alt="Mã QR Truy cập Wavelet Studio" width="250" />
+  <img src="web/database/QR.png" alt="Mã QR Truy cập Wavelet Studio" width="250" />
   <p><i>(Quét mã QR trên để mở ứng dụng Web)</i></p>
 </div>
 

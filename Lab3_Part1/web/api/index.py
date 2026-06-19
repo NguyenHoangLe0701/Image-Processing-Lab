@@ -55,21 +55,16 @@ def extract_wavelet(img: np.ndarray, wavelet: str = 'haar', level: int = DWT_LEV
 
 
 def create_hash(coeffs) -> np.ndarray:
-    """Tạo mã băm nhị phân từ hệ số xấp xỉ (cA) và các hệ số chi tiết (cH, cV, cD)
-    để tăng cường khả năng phân biệt đặc trưng (tránh lỗi nhận nhầm ảnh phong cảnh)."""
+    """Tạo mã băm nhị phân (Wavelet Hash chuẩn).
+    Với DWT_LEVEL=4, ảnh 256x256 được thu hẹp về mảng cA 16x16 (256 giá trị).
+    Cách này loại bỏ hoàn toàn nhiễu và chi tiết thừa, giúp thuật toán 
+    kháng nhiễu cực tốt khi ảnh bị nén JPEG trên trình duyệt."""
     cA = coeffs[0]
-    cH, cV, cD = coeffs[1]
     
-    # Binarize cA bằng median (trị số giữa) giúp kháng nhiễu tốt hơn mean
+    # Binarize cA bằng median (trị số giữa)
     hash_A = (cA >= np.median(cA)).astype(np.uint8).flatten()
     
-    # Binarize các thành phần tần số cao (cạnh, chi tiết) quanh mức 0
-    hash_H = (cH >= 0).astype(np.uint8).flatten()
-    hash_V = (cV >= 0).astype(np.uint8).flatten()
-    hash_D = (cD >= 0).astype(np.uint8).flatten()
-    
-    # Nối tất cả lại thành 1 chuỗi bit dài và đặc trưng hơn (4x chiều dài cũ)
-    return np.concatenate((hash_A, hash_H, hash_V, hash_D))
+    return hash_A
 
 
 def hamming(h1: np.ndarray, h2: np.ndarray) -> tuple:
