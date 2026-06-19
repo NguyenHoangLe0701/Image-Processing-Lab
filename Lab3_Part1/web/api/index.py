@@ -16,9 +16,9 @@ app = Flask(__name__)
 
 # ── Cấu hình ──────────────────────────────────────────────
 IMG_SIZE = (256, 256)
-DWT_LEVEL = 2
-EXACT_THRESHOLD = 0.85
-SIMILAR_THRESHOLD = 0.60
+DWT_LEVEL = 4  # cA 16x16 = 256 bits
+EXACT_THRESHOLD = 0.80
+SIMILAR_THRESHOLD = 0.65
 SUPPORTED_WAVELETS = ['haar', 'db2', 'db4', 'sym2', 'coif1', 'bior1.3']
 DATABASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'database')
 
