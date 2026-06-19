@@ -117,10 +117,6 @@ def compare():
         h2_img = (hash2.reshape(side, side) * 255).astype(np.uint8)
         diff = ((hash1 != hash2).reshape(side, side) * 255).astype(np.uint8)
 
-        return jsonify({
-            'success': True,
-            'image1': {
-                'grayscale': array_to_data_url(img1),
         img1_info = {
             'grayscale': array_to_data_url(img1),
             'wavelet': subbands_to_images(coeffs1),
