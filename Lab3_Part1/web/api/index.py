@@ -16,8 +16,8 @@ app = Flask(__name__)
 
 # ── Cấu hình ──────────────────────────────────────────────
 IMG_SIZE = (256, 256)
-DWT_LEVEL = 4  # cA 16x16 = 256 bits
-EXACT_THRESHOLD = 0.80
+DWT_LEVEL = 4  # Dùng 4 cấp để lấy ma trận 16x16
+EXACT_THRESHOLD = 0.85
 SIMILAR_THRESHOLD = 0.65
 SUPPORTED_WAVELETS = ['haar', 'db2', 'db4', 'sym2', 'coif1', 'bior1.3']
 DATABASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'database')
@@ -55,20 +55,23 @@ def extract_wavelet(img: np.ndarray, wavelet: str = 'haar', level: int = DWT_LEV
 
 
 def create_hash(coeffs) -> np.ndarray:
-    """Tạo mã băm nhị phân từ hệ số xấp xỉ (cA) và các hệ số chi tiết (cH, cV, cD)
-    để tăng cường khả năng phân biệt đặc trưng (tránh lỗi nhận nhầm ảnh phong cảnh)."""
+    """Tạo mã băm nhị phân tối ưu cho cả bố cục lẫn kết cấu (Texture)."""
     cA = coeffs[0]
     cH, cV, cD = coeffs[1]
     
-    # Binarize cA bằng median (trị số giữa) giúp kháng nhiễu tốt hơn mean
-    hash_A = (cA >= np.median(cA)).astype(np.uint8).flatten()
+    # 1. Bố cục tổng thể (Xấp xỉ cA): So sánh với Median để loại bỏ chênh lệch sáng/tối
+    hash_A = (cA > np.median(cA)).astype(np.uint8).flatten()
     
-    # Binarize các thành phần tần số cao (cạnh, chi tiết) quanh mức 0
-    hash_H = (cH >= 0).astype(np.uint8).flatten()
-    hash_V = (cV >= 0).astype(np.uint8).flatten()
-    hash_D = (cD >= 0).astype(np.uint8).flatten()
+    # 2. Vị trí góc cạnh, kết cấu (cH, cV, cD):
+    # Lấy độ lớn (Absolute) của cạnh và so sánh với Median của chính nó.
+    # Kỹ thuật này đánh dấu chính xác VỊ TRÍ CỦA CÁC ĐƯỜNG NÉT mạnh nhất (bit 1)
+    # và bỏ qua các vùng nhiễu/trơn nhẵn (bit 0), đảm bảo phân biệt cực tốt 
+    # các ảnh có chung bố cục bầu trời/mặt đất nhưng khác chi tiết cảnh vật.
+    hash_H = (np.abs(cH) > np.median(np.abs(cH))).astype(np.uint8).flatten()
+    hash_V = (np.abs(cV) > np.median(np.abs(cV))).astype(np.uint8).flatten()
+    hash_D = (np.abs(cD) > np.median(np.abs(cD))).astype(np.uint8).flatten()
     
-    # Nối tất cả lại thành 1 chuỗi bit dài và đặc trưng hơn (4x chiều dài cũ)
+    # Nối lại thành mã băm 1024 bits (với DWT_LEVEL=4)
     return np.concatenate((hash_A, hash_H, hash_V, hash_D))
 
 
