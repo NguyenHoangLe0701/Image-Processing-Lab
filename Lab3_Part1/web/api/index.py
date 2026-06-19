@@ -222,6 +222,21 @@ def search():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/samples', methods=['GET'])
+def get_samples():
+    """Lấy danh sách ngẫu nhiên vài ảnh mẫu từ database để test."""
+    try:
+        if not os.path.exists(DATABASE_DIR):
+            return jsonify({'success': True, 'samples': []})
+        files = [f for f in os.listdir(DATABASE_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        import random
+        # Lấy 8 ảnh ngẫu nhiên
+        samples = random.sample(files, min(8, len(files)))
+        return jsonify({'success': True, 'samples': samples})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ── Phục vụ file tĩnh (chỉ dùng khi chạy local) ──────────
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')

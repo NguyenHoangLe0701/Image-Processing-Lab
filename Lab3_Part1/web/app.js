@@ -445,4 +445,57 @@
     }
   }
 
+  // ── Load sample images for search ─────────────────────────
+  async function loadSamples() {
+    const grid = $('#sampleGrid');
+    if (!grid) return;
+    try {
+      const res = await fetch('/api/samples');
+      const data = await res.json();
+      if (data.success && data.samples) {
+        grid.innerHTML = '';
+        data.samples.forEach(filename => {
+          const img = document.createElement('img');
+          img.src = '/database/' + filename;
+          img.className = 'sample-img';
+          img.title = filename;
+          img.addEventListener('click', () => selectSample(img.src));
+          grid.appendChild(img);
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load samples', e);
+    }
+  }
+
+  function selectSample(url) {
+    fetch(url)
+      .then(res => res.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const rawB64 = e.target.result;
+          previewSearch.src = rawB64;
+          
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 256, 256);
+            searchImageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            dropzoneSearch.classList.add('has-image');
+            clearSearch.hidden = false;
+            updateButtons();
+            if (searchResultsEl) searchResultsEl.hidden = true;
+          };
+          img.src = rawB64;
+        };
+        reader.readAsDataURL(blob);
+      });
+  }
+
+  loadSamples();
+
 })();

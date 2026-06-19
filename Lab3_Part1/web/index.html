@@ -237,7 +237,7 @@
         <h2 class="section__title">Tìm kiếm hình ảnh (1:N)</h2>
       </div>
 
-      <div class="upload-grid" style="grid-template-columns: 1fr; max-width: 400px; margin: 0 auto 28px;">
+      <div class="upload-grid" style="grid-template-columns: 1fr; max-width: 400px; margin: 0 auto 16px;">
         <div class="dropzone" id="dropzoneSearch" tabindex="0">
           <input type="file" id="fileInputSearch" accept="image/*" hidden />
           <div class="dropzone__placeholder" id="placeholderSearch">
@@ -253,6 +253,13 @@
           <img class="dropzone__preview" id="previewSearch" alt="Ảnh truy vấn" />
           <button class="dropzone__clear" id="clearSearch" hidden title="Xóa ảnh">✕</button>
           <span class="dropzone__label">Ảnh truy vấn</span>
+        </div>
+      </div>
+
+      <div class="sample-section" style="max-width: 440px; margin: 0 auto 28px; text-align: center;">
+        <p style="font-size: .85rem; color: var(--text-3); margin-bottom: 12px;">Hoặc chọn nhanh ảnh mẫu để test:</p>
+        <div class="sample-grid" id="sampleGrid" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <!-- Ảnh mẫu sẽ được load bằng JS -->
         </div>
       </div>
 
