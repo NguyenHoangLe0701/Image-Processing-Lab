@@ -74,9 +74,9 @@ d:\Workspace\Xử Lý Ảnh\Lab3_Part1\
 ## 🧠 Tóm tắt quy trình hoạt động (Pipeline)
 
 1. **Tiền xử lý**: Ảnh đầu vào được chuyển sang màu xám (Grayscale) và thay đổi kích thước chuẩn (256x256 pixel).
-2. **Biến đổi Wavelet (DWT)**: Phân tách đặc trưng tần số của ảnh, sử dụng thành phần xấp xỉ (Approximation - cA) để lấy dữ liệu quan trọng nhất.
-3. **Tạo mã băm (Hashing)**: Lượng tử hóa ma trận hệ số cA: nếu giá trị ≥ giá trị trung bình sẽ mang bit `1`, ngược lại mang bit `0`, tạo thành một chuỗi nhị phân (Hash).
-4. **So sánh Hamming**: Thuật toán đếm số bit khác biệt giữa các mã băm. Càng ít bit sai khác, tỷ lệ phần trăm tương đồng giữa hai ảnh càng cao.
+2. **Biến đổi Wavelet (DWT)**: Áp dụng DWT nhiều cấp (Mặc định: Level 4) để nén ảnh về ma trận xấp xỉ `cA` siêu nhỏ (16x16 = 256 bits).
+3. **Tạo mã băm (Hashing)**: Binarize ma trận `cA` bằng Trị số giữa (Median). Các điểm ảnh có cường độ $\ge$ Median sẽ thành bit `1`, còn lại là bit `0`, tạo thành chuỗi 256 bits.
+4. **So sánh Hamming**: Thuật toán đếm số bit khác biệt. Càng ít bit sai khác, tỷ lệ tương đồng cấu trúc càng cao.
 
 ---
 
