@@ -1,237 +1,103 @@
-# Phát Biểu Bài Toán: So Sánh Sự Tương Đồng Hình Ảnh Sử Dụng Wavelet
+# Problem Definition: Hệ Thống So Sánh Tương Đồng Hình Ảnh (Wavelet Image Similarity)
 
 ---
 
-## 1. Tổng Quan
+## 1. Tổng Quan Dự Án
 
-**Tên bài tập:** Bài thực hành 4 — So sánh sự tương đồng của các hình ảnh sử dụng Wavelet, Python  
-**Môn học:** Xử Lý Ảnh (Image Processing)  
-**Mục tiêu chính:** Sử dụng biến đổi wavelet rời rạc (DWT — Discrete Wavelet Transform) để trích xuất đặc trưng hình ảnh, tạo mã băm (hash), và so sánh mức độ tương đồng giữa các cặp hình ảnh.
+**Tên dự án:** Wavelet Studio - Image Similarity Search
+**Ngôn ngữ lập trình:** Python (Backend) + JavaScript (Frontend)
+**Framework:** Flask (Backend, hỗ trợ Serverless) + HTML5/CSS3/JS thuần (Frontend)
+**Mục tiêu:** Xây dựng ứng dụng web cho phép người dùng so sánh độ tương đồng giữa hai hình ảnh hoặc tìm kiếm hình ảnh tương đồng trong cơ sở dữ liệu dựa trên đặc trưng tần số (sử dụng biến đổi Wavelet) và khoảng cách băm (Hamming Distance).
 
 ---
 
-## 2. Bối Cảnh & Kiến Thức Nền Tảng
+## 2. Phát Biểu Bài Toán
 
-### 2.1. Wavelet Transform là gì?
-
-Biến đổi wavelet là phương pháp phân tích tín hiệu/ảnh theo cả **miền tần số** và **miền không gian** đồng thời. Khi áp dụng DWT lên một hình ảnh 2D, ta nhận được 4 thành phần (sub-bands):
-
-| Sub-band | Tên gọi                    | Ý nghĩa                                  |
-| :------: | :-------------------------- | :---------------------------------------- |
-| **cA**   | Approximation (xấp xỉ)     | Thông tin tổng thể, tần số thấp           |
-| **cH**   | Horizontal detail (chi tiết ngang) | Các cạnh ngang                      |
-| **cV**   | Vertical detail (chi tiết dọc)     | Các cạnh dọc                        |
-| **cD**   | Diagonal detail (chi tiết chéo)    | Các cạnh chéo                       |
-
-### 2.2. Wavelet Hashing là gì?
-
-Wavelet hashing là kỹ thuật tạo một "dấu vân tay" (fingerprint) cho hình ảnh dựa trên hệ số wavelet:
-1. Áp dụng DWT để lấy hệ số wavelet
-2. Lượng tử hóa (quantize) các hệ số: nếu hệ số ≥ trung bình → `1`, ngược lại → `0`
-3. Kết quả là một chuỗi nhị phân (binary string) đại diện cho ảnh
-
-### 2.3. Khoảng cách Hamming
-
-Khoảng cách Hamming giữa hai chuỗi nhị phân = **số vị trí mà hai chuỗi khác nhau**.
-- Khoảng cách nhỏ → hai ảnh **tương tự**
-- Khoảng cách lớn → hai ảnh **khác biệt**
+Việc so sánh hình ảnh thông thường bằng cách đối chiếu từng pixel rất dễ bị ảnh hưởng bởi nhiễu, thay đổi kích thước, hoặc độ sáng. Bài toán đặt ra là làm thế nào để rút trích được những **đặc trưng cốt lõi** của hình ảnh (bố cục, đường nét, kết cấu) và so sánh chúng một cách nhanh chóng. 
+Giải pháp được lựa chọn là sử dụng **Discrete Wavelet Transform (DWT)** để phân tích ảnh ở các dải tần số khác nhau, từ đó tạo ra một "mã băm nhị phân" (Image Hash) đặc trưng. Cuối cùng, dùng **Khoảng cách Hamming** để đánh giá mức độ giống nhau giữa các mã băm.
 
 ---
 
 ## 3. Đầu Vào (Input)
 
-### 3.1. Tập dữ liệu hình ảnh
-
-Chuẩn bị một tập hợp ảnh lưu tại `data/input/`, bao gồm:
-
-- **Ảnh cặp tương tự (Similar pairs):**
-  - Cùng một đối tượng, khác góc chụp
-  - Cùng một đối tượng, khác mức độ nhiễu (noise)
-  - Cùng một đối tượng, khác độ sáng/tương phản
-  - Cùng một đối tượng, khác kích thước (scale)
-
-- **Ảnh cặp không tương tự (Dissimilar pairs):**
-  - Các đối tượng hoàn toàn khác nhau
-
-### 3.2. Yêu cầu dữ liệu
-
-- Tối thiểu **10 cặp ảnh tương tự** và **10 cặp ảnh không tương tự**
-- Định dạng: `.jpg`, `.png`, hoặc `.bmp`
-- Kích thước: Không giới hạn (code sẽ resize về kích thước chuẩn trước khi xử lý)
-- Gắn nhãn (label) cho từng cặp: `1` = tương tự, `0` = không tương tự
+| Thành phần           | Mô tả                                                    |
+| -------------------- | -------------------------------------------------------- |
+| **Ảnh cần so sánh**  | Người dùng tải lên 2 ảnh (để so sánh 1-1) hoặc 1 ảnh (để tìm kiếm) |
+| **Định dạng hỗ trợ** | `.jpg`, `.jpeg`, `.png` (Ảnh tải lên sẽ được resize về 256x256 và chuyển sang Grayscale) |
+| **Tham số thuật toán**| Loại Wavelet (Haar, Daubechies 2/4, Symlets, Coiflets, Biorthogonal) |
+| **Cơ sở dữ liệu**    | Thư mục `database/` chứa các ảnh mẫu dùng cho tính năng tìm kiếm |
 
 ---
 
-## 4. Đầu Ra (Output)
+## 4. Các Chức Năng Cốt Lõi (Core Features)
 
-### 4.1. Kết quả Notebook
+### 4.1. So Sánh Hai Ảnh (1-to-1 Comparison)
+- Nhận 2 ảnh từ người dùng.
+- Trích xuất đặc trưng Wavelet ở cấp độ 4 (Level 4 DWT).
+- Tạo mã băm nhị phân cho từng ảnh dựa trên giá trị Median của các hệ số xấp xỉ (cA) và chi tiết (cH, cV, cD).
+- Tính khoảng cách Hamming và quy đổi ra % tương đồng.
+- Phân loại kết quả: Exact (Giống hoàn toàn), Similar (Tương đối giống), None (Khác biệt).
 
-| Output                    | Mô tả                                                           |
-| :------------------------ | :--------------------------------------------------------------- |
-| **Wavelet coefficients**  | Hiển thị trực quan hệ số wavelet (cA, cH, cV, cD) của mẫu ảnh  |
-| **Hash strings**          | Mã băm nhị phân của từng ảnh                                    |
-| **Hamming distances**     | Ma trận/bảng khoảng cách Hamming giữa các cặp ảnh               |
-| **Confusion matrix**      | Ma trận nhầm lẫn (TP, TN, FP, FN)                               |
-| **Metrics**               | Accuracy, Sensitivity (Recall), Specificity                      |
-| **ROC Curve**             | Đồ thị ROC đánh giá hiệu suất thuật toán                        |
+### 4.2. So Sánh Đa Wavelet (Compare Wavelets)
+- Đánh giá độ tương đồng của 2 ảnh trên nhiều loại Wavelet khác nhau (Haar, db2, db4, sym2, coif1, bior1.3) cùng một lúc để thấy sự khác biệt về hiệu năng trích xuất đặc trưng.
 
-### 4.2. Kết quả Web App (Phần mở rộng)
-
-- Giao diện cho phép upload 2 ảnh
-- Hiển thị wavelet decomposition trực quan
-- Tính và hiển thị Hamming distance
-- Kết luận: "Tương tự" hoặc "Không tương tự" dựa trên ngưỡng (threshold)
+### 4.3. Tìm Kiếm Hình Ảnh (Image Search)
+- Nhận 1 ảnh truy vấn (Query Image).
+- Quét qua toàn bộ hình ảnh trong thư mục `database/`.
+- Tính độ tương đồng giữa ảnh truy vấn và từng ảnh trong CSDL.
+- Trả về danh sách (tối đa 48 ảnh) sắp xếp theo độ tương đồng giảm dần.
 
 ---
 
-## 5. Luồng Xử Lý Chính (Pipeline)
+## 5. Đầu Ra (Output)
 
-```
-┌────────────┐    ┌──────────────────┐    ┌──────────────┐    ┌──────────────────┐    ┌────────────┐
-│  Đọc ảnh   │ →  │ Tiền xử lý       │ →  │ DWT (pywt)   │ →  │ Lượng tử hóa     │ →  │ Hash nhị   │
-│  (cv2/PIL) │    │ - Grayscale      │    │ - wavelet    │    │ - threshold      │    │  phân      │
-│            │    │ - Resize         │    │ - level      │    │ - binary string  │    │            │
-└────────────┘    └──────────────────┘    └──────────────┘    └──────────────────┘    └────────────┘
-                                                                                           │
-                                                                                           ▼
-                                          ┌──────────────┐    ┌──────────────────┐    ┌────────────┐
-                                          │ Đánh giá     │ ←  │ So sánh Hamming  │ ←  │ Ghép cặp   │
-                                          │ - Accuracy   │    │ - Distance       │    │ ảnh        │
-                                          │ - ROC Curve  │    │ - Threshold      │    │            │
-                                          └──────────────┘    └──────────────────┘    └────────────┘
+| Thành phần         | Mô tả                                                     |
+| ------------------ | --------------------------------------------------------- |
+| **Kết quả 1-1**    | % tương đồng, khoảng cách Hamming, mã băm (dạng hình ảnh minh họa), ảnh biểu diễn sự khác biệt giữa 2 mã băm. |
+| **Kết quả tìm kiếm**| Lưới hình ảnh các kết quả tìm được trong CSDL, ghi chú mức độ % giống với ảnh truy vấn. |
+| **Trực quan hóa**  | Hiển thị các sub-bands của biến đổi Wavelet (cA, cH, cV, cD) ngay trên giao diện web. |
+
+---
+
+## 6. Kiến Trúc Hệ Thống
+
+```text
+[Trình duyệt (HTML/CSS/JS thuần)]
+        │
+        │  Gửi ảnh dạng Base64 qua JSON (AJAX / Fetch API)
+        ▼
+[Flask Backend (Vercel Serverless / Local)]
+        │
+        ├── /api/compare        → Trả về % tương đồng và mã băm
+        ├── /api/compare-wavelets → Đánh giá bằng nhiều hàm Wavelet
+        ├── /api/search         → Quét thư mục database/ và xếp hạng ảnh
+        └── /api/samples        → Lấy ảnh ngẫu nhiên làm mẫu thử
+        │
+        ▼
+[PyWavelets + Numpy + Pillow] (Xử lý thuật toán)
+        │
+        ▼
+[Thư mục database/] (Chứa ảnh tìm kiếm)
 ```
 
 ---
 
-## 6. Các Bước Thực Hiện Chi Tiết
+## 7. Yêu Cầu Kỹ Thuật & Môi Trường
 
-### Bước 1: Chuẩn Bị Dữ Liệu
-
-- Thu thập / tạo tập ảnh (có thể tải từ internet hoặc tự chụp)
-- Tổ chức vào `data/input/` theo cấu trúc rõ ràng
-- Tạo file metadata (CSV hoặc dict trong code) ghi nhận nhãn cặp ảnh
-
-### Bước 2: Trích Xuất Wavelet Đặc Biệt
-
-```python
-import pywt
-import cv2
-import numpy as np
-
-def extract_wavelet_features(image_path, wavelet='haar', level=2):
-    """
-    Trích xuất hệ số wavelet từ ảnh.
-    
-    Args:
-        image_path: Đường dẫn đến file ảnh
-        wavelet: Loại wavelet (mặc định: 'haar')
-        level: Số mức phân tích DWT (mặc định: 2)
-    
-    Returns:
-        coeffs: Hệ số wavelet
-    """
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    img = cv2.resize(img, (256, 256))  # Chuẩn hóa kích thước
-    coeffs = pywt.wavedec2(img, wavelet, level=level)
-    return coeffs
-```
-
-### Bước 3: Tạo Mã Băm
-
-```python
-def create_wavelet_hash(coeffs):
-    """
-    Tạo mã băm nhị phân từ hệ số wavelet.
-    
-    Lượng tử hóa: hệ số >= trung bình → 1, ngược lại → 0
-    """
-    # Lấy hệ số xấp xỉ (cA)
-    approx = coeffs[0]
-    # Tính trung bình
-    mean_val = np.mean(approx)
-    # Lượng tử hóa
-    binary_hash = (approx >= mean_val).astype(int).flatten()
-    return binary_hash
-```
-
-### Bước 4: So Sánh Hàm Băm
-
-```python
-def hamming_distance(hash1, hash2):
-    """
-    Tính khoảng cách Hamming giữa 2 hash.
-    
-    Returns:
-        distance: Số bit khác nhau
-        similarity: Tỷ lệ tương đồng (0.0 - 1.0)
-    """
-    distance = np.sum(hash1 != hash2)
-    similarity = 1 - (distance / len(hash1))
-    return distance, similarity
-```
-
-### Bước 5: Đánh Giá
-
-- Chọn ngưỡng (threshold) để phân loại "tương tự" / "không tương tự"
-- Tính các metrics:
-  - **Accuracy** = (TP + TN) / (TP + TN + FP + FN)
-  - **Sensitivity (Recall)** = TP / (TP + FN)
-  - **Specificity** = TN / (TN + FP)
-- Vẽ đường cong ROC bằng `sklearn.metrics.roc_curve`
-
----
-
-## 7. Phần Mở Rộng: Web App
-
-### 7.1. Tổng Quan Web App
-
-**Tên:** Wavelet Image Similarity Studio  
-**Mục tiêu:** Xây dựng ứng dụng web chạy hoàn toàn trên trình duyệt để demo tìm kiếm / so sánh hình ảnh tương tự dựa trên wavelet hash.
-
-### 7.2. Tính Năng
-
-1. **Upload & So sánh 2 ảnh:** Tải lên 2 ảnh, hiển thị wavelet decomposition và kết quả Hamming distance
-2. **Tìm kiếm ảnh tương tự:** Upload 1 ảnh query, tìm trong bộ ảnh có sẵn những ảnh tương tự nhất
-3. **Trực quan hóa wavelet:** Hiển thị các sub-band (cA, cH, cV, cD) dạng hình ảnh
-
-### 7.3. Kiến Trúc
-
-- **Client-side only** — Không backend, không database
-- Xử lý wavelet trong browser bằng JavaScript thuần (hoặc WebAssembly nếu cần)
-- Giao diện dark mode, hiện đại, responsive
-
-### 7.4. Giới hạn Web App (Out of Scope)
-
-- ❌ Không backend / server xử lý
-- ❌ Không database / lưu trữ dữ liệu người dùng
-- ❌ Không đăng nhập / xác thực
-- ❌ Không sử dụng API bên ngoài
+| Tiêu chí        | Chi tiết                                     |
+| --------------- | -------------------------------------------- |
+| **Backend**     | Python 3, Flask 3.1.*                        |
+| **Thư viện**    | PyWavelets (1.8.*), Numpy (1.26.*), Pillow (11.*) |
+| **Frontend**    | HTML5, CSS3, ES6 JavaScript (không dùng framework như React/Vue để tối ưu tốc độ và đơn giản hóa việc deploy) |
+| **Lưu trữ**     | Xử lý "In-memory", truyền ảnh bằng chuỗi Base64, không lưu file vật lý trên server (trừ DB mẫu). |
+| **Deploy**      | Hỗ trợ chạy local bằng python và deploy lên nền tảng Vercel thông qua `vercel.json` |
 
 ---
 
 ## 8. Tiêu Chí Hoàn Thành (Definition of Done)
-
-### 8.1. Phần Notebook
-
-- [ ] Code chạy không lỗi trên Python 3.10+
-- [ ] Trích xuất wavelet thành công cho tất cả ảnh trong dataset
-- [ ] Tạo mã băm cho từng ảnh
-- [ ] Tính khoảng cách Hamming cho tất cả các cặp ảnh
-- [ ] Hiển thị trực quan hệ số wavelet (ít nhất 2 ảnh mẫu)
-- [ ] Tính đúng các metrics: Accuracy, Sensitivity, Specificity
-- [ ] Vẽ đường cong ROC
-- [ ] Code có docstring và comment đầy đủ
-- [ ] Output hiển thị dạng bảng rõ ràng
-
-### 8.2. Phần Web App
-
-- [ ] Giao diện responsive (desktop & mobile)
-- [ ] Upload 2 ảnh và hiển thị kết quả so sánh
-- [ ] Hiển thị wavelet decomposition trực quan
-- [ ] Hiển thị Hamming distance và kết luận tương tự/không tương tự
-- [ ] Giao diện đẹp, chuyên nghiệp, dark mode
-- [ ] Chạy mượt, không crash trình duyệt
-
----
-
-> 📌 **Tham khảo thêm:** Đọc file `docs/implement_plan.md` để biết kế hoạch triển khai chi tiết và thứ tự các bước thực hiện.
+- [ ] Giao diện Web hiển thị đẹp mắt, trực quan và responsive.
+- [ ] Tính năng chọn ảnh mẫu và upload ảnh hoạt động mượt mà.
+- [ ] Hàm tạo mã băm Wavelet trích xuất đúng đặc trưng và không bị sập (crash) khi ảnh phức tạp.
+- [ ] Tính năng so sánh trả về kết quả nhanh (< 2 giây).
+- [ ] Tính năng tìm kiếm quét được các ảnh có trong thư mục `database/` và xếp hạng chính xác.
+- [ ] Ứng dụng chạy thành công cả ở môi trường Local và Serverless Vercel.

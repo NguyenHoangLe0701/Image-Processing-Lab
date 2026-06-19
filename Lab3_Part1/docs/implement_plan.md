@@ -1,438 +1,157 @@
-# Kế Hoạch Triển Khai: So Sánh Tương Đồng Hình Ảnh Sử Dụng Wavelet
+# Implementation Plan: Wavelet Image Similarity
 
 ---
 
-## 1. Mục Đích Tài Liệu
+## 1. Thông Tin Dự Án
 
-Tài liệu này vạch ra **các bước thực hiện cụ thể** để hoàn thành Bài thực hành 4 — bao gồm cả phần Jupyter Notebook (bắt buộc) và phần Web App (mở rộng). Tài liệu tuân thủ đúng phạm vi đã định trong `problem_definition.md` và quy tắc trong `rules.md`.
+| Mục           | Chi tiết              |
+| ------------- | --------------------- |
+| **Ngôn ngữ**  | Python 3, JavaScript (ES6) |
+| **Framework** | Flask (Backend)       |
+| **Xử lý ảnh** | PyWavelets, NumPy, Pillow |
+| **Frontend**  | HTML5, CSS3 (vanilla), JS thuần |
+| **Đóng gói / Deploy** | Vercel Serverless Function |
 
-> 💡 **Dành cho AI:** Khi triển khai, hãy đọc file này theo thứ tự từ trên xuống và thực hiện từng giai đoạn. Không bỏ qua bất kỳ giai đoạn nào.
+> **Hướng dẫn Prompt cho AI khác (AI Handoff Prompt):**
+> *"Tôi cần xây dựng một ứng dụng web xử lý ảnh bằng Flask và HTML/JS thuần. Dự án tên là Wavelet Studio. Ứng dụng sử dụng thuật toán biến đổi Wavelet (DWT 2D mức 4) và khoảng cách Hamming để tìm ra sự tương đồng giữa 2 hình ảnh. Cấu trúc dự án bao gồm thư mục `web/` chứa file `index.html`, `style.css`, `app.js` cho frontend, và `api/index.py` cho Flask backend. Server không lưu trữ ảnh upload mà frontend sẽ mã hóa Base64 và gửi qua JSON REST API. Ứng dụng cũng hỗ trợ tìm kiếm ảnh tương đồng trong một thư mục `database/`. Ứng dụng cần hỗ trợ deploy serverless qua `vercel.json`."*
 
 ---
 
-## 2. Cấu Trúc Thư Mục Dự Án
+## 2. Cấu Trúc Thư Mục Thực Tế
 
-```
+```text
 Lab3_Part1/
-├── README.md
-├── rules.md
-├── docs/
-│   ├── problem_definition.md
-│   └── implement_plan.md          ← FILE NÀY
-├── data/
-│   └── input/
-│       ├── similar/               # Các cặp ảnh tương tự
-│       │   ├── obj1_angle1.jpg
-│       │   ├── obj1_angle2.jpg
-│       │   ├── obj2_bright.jpg
-│       │   ├── obj2_dark.jpg
-│       │   └── ...
-│       ├── dissimilar/            # Các ảnh không tương tự
-│       │   ├── cat.jpg
-│       │   ├── car.jpg
-│       │   └── ...
-│       └── output/                # Kết quả wavelet, hash, etc.
-├── notebooks/
-│   └── lab4_wavelet_hashing.ipynb
+│
 ├── web/
-│   ├── index.html
-│   ├── style.css
-│   ├── main.js
-│   ├── package.json
-│   ├── vite.config.js
-│   └── public/
-│       └── sample_images/         # Ảnh mẫu cho web demo
-└── khamkhao/                      # Tài liệu tham khảo (bài cũ)
+│   ├── api/
+│   │   └── index.py            # API Backend chính (Flask), chứa logic Wavelet
+│   ├── app.js                  # Frontend logic (xử lý UI, gọi API)
+│   ├── index.html              # Giao diện chính của ứng dụng
+│   ├── style.css               # Styling cho giao diện (Vanilla CSS)
+│   ├── requirements.txt        # Các thư viện Python (Flask, Numpy, PyWavelets, Pillow)
+│   └── vercel.json             # Cấu hình deploy Vercel
+│
+├── database/                   # Thư mục chứa các ảnh mẫu dùng để tìm kiếm (Image Search)
+├── data/                       # Chứa dataset gốc nghiệm thu
+├── notebooks/                  # Các file Jupyter (Pynb) để thử nghiệm thuật toán
+└── docs/                       # Tài liệu dự án
 ```
 
 ---
 
-## 3. Phần I: Jupyter Notebook (BẮT BUỘC)
+## 3. Chi Tiết Các Route Flask (`web/api/index.py`)
 
-### Giai Đoạn 1: Setup & Chuẩn Bị Dữ Liệu
+| Route                   | Method | Payload (JSON) | Mô tả                                                     |
+| ----------------------- | ------ | -------------- | --------------------------------------------------------- |
+| `/` và `/<path:path>`   | GET    | -              | Phục vụ file tĩnh (HTML, CSS, JS) khi chạy local. Vercel tự xử lý. |
+| `/api/compare`          | POST   | `image1`, `image2`, `wavelet` | Decode base64, tính toán Wavelet & Hash, trả về % giống nhau, khoảng cách Hamming và các ảnh sub-bands. |
+| `/api/compare-wavelets` | POST   | `image1`, `image2` | Lặp qua danh sách Wavelets được hỗ trợ (haar, db2, sym2...) để so sánh và trả về mảng kết quả. |
+| `/api/search`           | POST   | `query_image`, `wavelet` | Lặp qua thư mục `database/`, tính hash từng ảnh và so sánh với query image, trả về danh sách top kết quả tốt nhất. |
+| `/api/samples`          | GET    | -              | Trả về tên vài file ngẫu nhiên từ `database/` để người dùng test. |
 
-| Hạng mục        | Chi tiết                                                                                                                              | Tình trạng |
-| :--------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :---------: |
-| **Tạo notebook** | Tạo file `notebooks/lab4_wavelet_hashing.ipynb`                                                                                       | ⬜ Chưa     |
-| **Import thư viện** | `pywt`, `cv2`, `numpy`, `matplotlib`, `sklearn.metrics`, `os`, `glob`                                                              | ⬜ Chưa     |
-| **Thu thập ảnh** | Chuẩn bị ít nhất 20 ảnh (10 cặp tương tự + 10 cặp không tương tự). Lưu vào `data/input/similar/` và `data/input/dissimilar/`         | ⬜ Chưa     |
-| **Tạo metadata** | Tạo dict/CSV chứa thông tin nhãn: `[("img1.jpg", "img2.jpg", 1), ("img3.jpg", "img4.jpg", 0), ...]` — 1=tương tự, 0=không tương tự  | ⬜ Chưa     |
+---
 
-**Code mẫu — Cell 1: Import & Config:**
+## 4. Giải Thuật Cốt Lõi (Thuật Toán Wavelet Hashing)
+
+### 4.1. Tiền Xử Lý Ảnh
 ```python
-# ===========================================================
-# BÀI THỰC HÀNH 4: SO SÁNH SỰ TƯƠNG ĐỒNG CỦA CÁC HÌNH ẢNH
-#                   SỬ DỤNG WAVELET, PYTHON
-# ===========================================================
+def decode_image(b64_string: str):
+    # Nhận chuỗi Base64 từ Frontend -> Đọc bằng Pillow
+    # 1. Chuyển thành ảnh xám (convert 'L')
+    # 2. Resize chuẩn về kích thước 256x256 bằng LANCZOS
+    # 3. Trả về Numpy Array 2D
+```
 
-import pywt
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import (
-    accuracy_score, recall_score, roc_curve, auc,
-    confusion_matrix, ConfusionMatrixDisplay
-)
-import os
-import glob
+### 4.2. Trích Xuất Wavelet
+```python
+def extract_wavelet(img, wavelet='haar', level=4):
+    # Dùng hàm pywt.wavedec2() để biến đổi ảnh 2D qua 4 cấp.
+    # Trả về các hệ số: Xấp xỉ (cA) và Chi tiết (cH, cV, cD) của cấp cuối.
+```
 
-# Cấu hình
-IMG_SIZE = (256, 256)          # Kích thước chuẩn hóa ảnh
-WAVELET = 'haar'               # Loại wavelet sử dụng
-DWT_LEVEL = 2                  # Số mức phân tích DWT
-DATA_DIR = '../data/input/'    # Thư mục dữ liệu
+### 4.3. Tạo Image Hash (Mã Băm)
+```python
+def create_hash(coeffs):
+    # Nhận các ma trận cA, cH, cV, cD
+    # 1. So sánh từng pixel trong cA với giá trị Median(cA) -> Trích xuất bố cục tổng thể.
+    # 2. Lấy Absolute(cH), Absolute(cV), Absolute(cD) và so sánh với Median của chính nó -> Trích xuất vị trí cạnh/kết cấu nét mạnh nhất.
+    # 3. Nối (Concatenate) 4 ma trận nhị phân này lại thành vector 1 chiều (1024 bits).
+```
 
-print("✅ Import thư viện thành công!")
-print(f"📐 PyWavelets version: {pywt.__version__}")
-print(f"📐 OpenCV version: {cv2.__version__}")
+### 4.4. Tính Khoảng Cách Hamming
+```python
+def hamming(hash1, hash2):
+    # dist = số lượng bit khác nhau giữa hash1 và hash2
+    # similarity = 1 - (dist / tổng số bit)
+    # Trả về dist và sim
 ```
 
 ---
 
-### Giai Đoạn 2: Trích Xuất Wavelet Đặc Biệt (DWT)
+## 5. Luồng Dữ Liệu Frontend ↔ Backend
 
-| Hạng mục                        | Chi tiết                                                                                         | Tình trạng |
-| :------------------------------- | :----------------------------------------------------------------------------------------------- | :---------: |
-| **Hàm đọc & tiền xử lý ảnh**   | Đọc ảnh → Grayscale → Resize về `IMG_SIZE`                                                       | ⬜ Chưa     |
-| **Hàm DWT**                     | Áp dụng `pywt.wavedec2()` để phân tích wavelet đa mức                                            | ⬜ Chưa     |
-| **Trực quan hóa wavelet**       | Hiển thị 4 sub-bands (cA, cH, cV, cD) cho ít nhất 2 ảnh mẫu bằng `matplotlib`                   | ⬜ Chưa     |
-
-**Code mẫu — Cell 2: Trích xuất wavelet:**
-```python
-def load_and_preprocess(image_path: str, size: tuple = IMG_SIZE) -> np.ndarray:
-    """
-    Đọc ảnh từ file, chuyển sang grayscale và resize.
-    
-    Args:
-        image_path: Đường dẫn file ảnh
-        size: Kích thước đầu ra (width, height)
-    
-    Returns:
-        Ảnh grayscale đã resize (numpy array)
-    """
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        raise FileNotFoundError(f"Không tìm thấy ảnh: {image_path}")
-    img = cv2.resize(img, size)
-    return img
-
-
-def extract_wavelet(img: np.ndarray, wavelet: str = WAVELET, level: int = DWT_LEVEL):
-    """
-    Áp dụng biến đổi wavelet rời rạc 2D (DWT) cho ảnh.
-    
-    Args:
-        img: Ảnh grayscale (numpy array)
-        wavelet: Loại wavelet ('haar', 'db1', 'db2', 'sym2', ...)
-        level: Số mức phân tích
-    
-    Returns:
-        coeffs: Danh sách hệ số wavelet [cA_n, (cH_n, cV_n, cD_n), ..., (cH_1, cV_1, cD_1)]
-    """
-    coeffs = pywt.wavedec2(img, wavelet, level=level)
-    return coeffs
-
-
-def visualize_wavelet(img: np.ndarray, coeffs, title: str = "Wavelet Decomposition"):
-    """
-    Hiển thị ảnh gốc và 4 sub-bands wavelet.
-    """
-    fig, axes = plt.subplots(1, 5, figsize=(20, 4))
-    
-    axes[0].imshow(img, cmap='gray')
-    axes[0].set_title('Ảnh gốc')
-    axes[0].axis('off')
-    
-    # Sub-bands từ level 1 (chi tiết nhất)
-    cA = coeffs[0]
-    cH, cV, cD = coeffs[1]
-    
-    sub_bands = [cA, cH, cV, cD]
-    names = ['cA (Xấp xỉ)', 'cH (Ngang)', 'cV (Dọc)', 'cD (Chéo)']
-    
-    for i, (band, name) in enumerate(zip(sub_bands, names)):
-        axes[i+1].imshow(np.abs(band), cmap='gray')
-        axes[i+1].set_title(name)
-        axes[i+1].axis('off')
-    
-    fig.suptitle(title, fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    plt.show()
+```text
+User kéo thả / tải ảnh 1 và ảnh 2 trên UI (HTML)
+        │
+        ▼
+Javascript FileReader đọc file thành chuỗi "data:image/png;base64,..."
+        │
+        ▼
+JS gom chuỗi base64 và tên loại Wavelet vào object JSON
+        │
+        ▼
+Gửi HTTP POST đến "/api/compare" bằng `fetch()`
+        │
+        ▼
+[FLASK APP] 
+  1. Decode JSON -> Lấy base64 string
+  2. Xử lý thuật toán Wavelet 
+  3. Encode các ảnh trung gian (cA, cH, mã băm) ngược lại thành Base64
+  4. Trả kết quả { similarity_pct, image1_info, image2_info... } dạng JSON
+        │
+        ▼
+Javascript nhận JSON response, render % kết quả lên biểu đồ vòng (Circular Progress), vẽ lưới ảnh Sub-band lên UI.
 ```
 
 ---
 
-### Giai Đoạn 3: Tạo Mã Băm (Wavelet Hash)
+## 6. Cấu Hình Triển Khai (Deployment)
 
-| Hạng mục                   | Chi tiết                                                                        | Tình trạng |
-| :-------------------------- | :------------------------------------------------------------------------------ | :---------: |
-| **Hàm tạo hash**           | Lượng tử hóa hệ số wavelet → chuỗi nhị phân                                    | ⬜ Chưa     |
-| **Áp dụng cho toàn bộ ảnh** | Tạo hash cho tất cả ảnh trong dataset, lưu vào dict                            | ⬜ Chưa     |
-
-**Code mẫu — Cell 3: Tạo hash:**
-```python
-def create_wavelet_hash(coeffs) -> np.ndarray:
-    """
-    Tạo mã băm nhị phân từ hệ số wavelet.
-    
-    Phương pháp: Lượng tử hóa hệ số xấp xỉ (cA) bằng ngưỡng trung bình.
-    - Hệ số >= trung bình → 1
-    - Hệ số < trung bình  → 0
-    
-    Returns:
-        binary_hash: Mảng nhị phân 1D (numpy array of 0s and 1s)
-    """
-    approx = coeffs[0]  # Lấy hệ số xấp xỉ (cA)
-    mean_val = np.mean(approx)
-    binary_hash = (approx >= mean_val).astype(np.uint8).flatten()
-    return binary_hash
-
-
-def hash_to_string(binary_hash: np.ndarray) -> str:
-    """Chuyển mảng nhị phân thành chuỗi string để hiển thị."""
-    return ''.join(map(str, binary_hash))
+### 6.1. requirements.txt
+Sử dụng các phiên bản thư viện cố định để tránh lỗi trên Vercel:
+```text
+flask==3.1.*
+numpy==1.26.*
+PyWavelets==1.8.*
+Pillow==11.*
 ```
 
----
-
-### Giai Đoạn 4: So Sánh Hàm Băm (Hamming Distance)
-
-| Hạng mục                  | Chi tiết                                                                                   | Tình trạng |
-| :------------------------- | :----------------------------------------------------------------------------------------- | :---------: |
-| **Hàm Hamming distance**  | Tính số bit khác nhau giữa 2 hash                                                          | ⬜ Chưa     |
-| **Tính cho tất cả cặp**   | Tạo ma trận/bảng khoảng cách Hamming cho toàn bộ cặp ảnh                                   | ⬜ Chưa     |
-| **Chọn ngưỡng (threshold)** | Xác định ngưỡng Hamming để phân loại tương tự/không tương tự. Thử nhiều giá trị ngưỡng.  | ⬜ Chưa     |
-
-**Code mẫu — Cell 4: So sánh:**
-```python
-def hamming_distance(hash1: np.ndarray, hash2: np.ndarray) -> tuple:
-    """
-    Tính khoảng cách Hamming giữa 2 mã băm.
-    
-    Args:
-        hash1, hash2: Mảng nhị phân cùng kích thước
-    
-    Returns:
-        (distance, similarity):
-            - distance: Số bit khác nhau (int)
-            - similarity: Tỷ lệ tương đồng (float, 0.0 - 1.0)
-    """
-    if len(hash1) != len(hash2):
-        raise ValueError("Hai hash phải có cùng kích thước!")
-    
-    distance = int(np.sum(hash1 != hash2))
-    similarity = 1.0 - (distance / len(hash1))
-    return distance, similarity
-```
-
----
-
-### Giai Đoạn 5: Đánh Giá (Evaluation)
-
-| Hạng mục                   | Chi tiết                                                                                    | Tình trạng |
-| :-------------------------- | :------------------------------------------------------------------------------------------ | :---------: |
-| **Confusion Matrix**       | Tính TP, TN, FP, FN dựa trên ngưỡng đã chọn                                                | ⬜ Chưa     |
-| **Accuracy**               | (TP + TN) / Tổng                                                                            | ⬜ Chưa     |
-| **Sensitivity (Recall)**   | TP / (TP + FN)                                                                               | ⬜ Chưa     |
-| **Specificity**            | TN / (TN + FP)                                                                               | ⬜ Chưa     |
-| **ROC Curve**              | Vẽ đường cong ROC và tính AUC                                                               | ⬜ Chưa     |
-| **Bảng tổng kết**          | In bảng tổng hợp tất cả metrics                                                             | ⬜ Chưa     |
-
-**Code mẫu — Cell 5: Đánh giá:**
-```python
-def evaluate_results(y_true: list, y_scores: list, threshold: float = 0.5):
-    """
-    Đánh giá kết quả so sánh ảnh.
-    
-    Args:
-        y_true: Nhãn thực tế (1=tương tự, 0=không tương tự)
-        y_scores: Điểm tương đồng (similarity scores) cho mỗi cặp
-        threshold: Ngưỡng phân loại
-    
-    Returns:
-        dict chứa các metrics
-    """
-    y_pred = [1 if s >= threshold else 0 for s in y_scores]
-    
-    # Confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
-    tn, fp, fn, tp = cm.ravel()
-    
-    # Metrics
-    accuracy = (tp + tn) / (tp + tn + fp + fn)
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0  # Recall
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
-    
-    # In kết quả
-    print("=" * 50)
-    print("📊 KẾT QUẢ ĐÁNH GIÁ")
-    print("=" * 50)
-    print(f"  Ngưỡng (Threshold):   {threshold:.2f}")
-    print(f"  Accuracy:             {accuracy:.4f} ({accuracy*100:.2f}%)")
-    print(f"  Sensitivity (Recall): {sensitivity:.4f} ({sensitivity*100:.2f}%)")
-    print(f"  Specificity:          {specificity:.4f} ({specificity*100:.2f}%)")
-    print(f"  TP={tp}, TN={tn}, FP={fp}, FN={fn}")
-    print("=" * 50)
-    
-    return {
-        'accuracy': accuracy,
-        'sensitivity': sensitivity,
-        'specificity': specificity,
-        'confusion_matrix': cm,
-        'y_pred': y_pred
+### 6.2. vercel.json
+Cấu hình để Vercel biết cách chạy thư mục `api/` như một backend và phục vụ frontend tĩnh.
+```json
+{
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
     }
-
-
-def plot_roc_curve(y_true: list, y_scores: list):
-    """Vẽ đường cong ROC."""
-    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-    roc_auc = auc(fpr, tpr)
-    
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color='#00BFFF', lw=2, label=f'ROC Curve (AUC = {roc_auc:.4f})')
-    plt.plot([0, 1], [0, 1], color='gray', lw=1, linestyle='--', label='Random Classifier')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate (1 - Specificity)', fontsize=12)
-    plt.ylabel('True Positive Rate (Sensitivity)', fontsize=12)
-    plt.title('📈 Đường Cong ROC — Wavelet Hash Similarity', fontsize=14, fontweight='bold')
-    plt.legend(loc='lower right', fontsize=11)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.show()
-    
-    print(f"📌 AUC (Area Under Curve) = {roc_auc:.4f}")
-    return roc_auc
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.py" },
+    { "source": "/(.*)", "destination": "/$1" }
+  ]
+}
 ```
 
 ---
 
-## 4. Phần II: Web App (MỞ RỘNG)
+## 7. Các Điểm Kỹ Thuật Đáng Chú Ý (Lưu ý cho AI / Dev)
 
-### Giai Đoạn 6: Setup Project Web
-
-| Hạng mục           | Chi tiết                                                                                                      | Tình trạng |
-| :------------------ | :------------------------------------------------------------------------------------------------------------ | :---------: |
-| **Khởi tạo Vite**  | `cd web && npm create vite@latest ./ -- --template vanilla` → Xóa file thừa, giữ HTML/JS/CSS cơ bản          | ⬜ Chưa     |
-| **Cấu hình**       | Tạo `vite.config.js` đơn giản, cấu hình `package.json`                                                       | ⬜ Chưa     |
-
----
-
-### Giai Đoạn 7: Xây Dựng Giao Diện Web
-
-| Hạng mục               | Chi tiết                                                                    | Tình trạng |
-| :----------------------- | :-------------------------------------------------------------------------- | :---------: |
-| **Layout chính**        | Dark mode, 2 panel: Upload ảnh (trái) + Kết quả (phải)                      | ⬜ Chưa     |
-| **Upload component**    | Drag & Drop hoặc click để chọn 2 ảnh                                        | ⬜ Chưa     |
-| **Kết quả component**   | Hiển thị wavelet decomposition, Hamming distance, kết luận                  | ⬜ Chưa     |
-| **Responsive**          | Hoạt động tốt trên cả desktop và mobile                                    | ⬜ Chưa     |
-
-**Giao diện tham khảo:**
-```
-┌────────────────────────────────────────────────────────────┐
-│  🔬 Wavelet Image Similarity Studio                        │
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  ┌──────────────────┐    ┌──────────────────┐             │
-│  │                  │    │                  │             │
-│  │   📁 Ảnh 1       │    │   📁 Ảnh 2       │             │
-│  │   (Drop/Click)   │    │   (Drop/Click)   │             │
-│  │                  │    │                  │             │
-│  └──────────────────┘    └──────────────────┘             │
-│                                                            │
-│  ┌──────────────────────────────────────────┐             │
-│  │  📊 Kết Quả So Sánh                      │             │
-│  │  ─────────────────────────────────        │             │
-│  │  Hamming Distance: 42 / 4096              │             │
-│  │  Similarity: 98.97%                       │             │
-│  │  Kết luận: ✅ TƯƠNG TỰ                    │             │
-│  └──────────────────────────────────────────┘             │
-│                                                            │
-│  ┌──────────────────────────────────────────┐             │
-│  │  🌊 Wavelet Decomposition                 │             │
-│  │  [cA] [cH] [cV] [cD]  |  [cA] [cH] [cV] [cD]         │
-│  │       Ảnh 1             |       Ảnh 2                  │
-│  └──────────────────────────────────────────┘             │
-└────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Giai Đoạn 8: Logic Xử Lý Wavelet Trong JavaScript
-
-| Hạng mục                  | Chi tiết                                                                          | Tình trạng |
-| :------------------------- | :-------------------------------------------------------------------------------- | :---------: |
-| **Đọc ảnh từ Canvas**     | Dùng Canvas API để lấy pixel data từ ảnh upload                                   | ⬜ Chưa     |
-| **Grayscale conversion**  | Chuyển ảnh RGB → Grayscale bằng công thức: `0.299*R + 0.587*G + 0.114*B`          | ⬜ Chưa     |
-| **Haar wavelet (JS)**     | Implement biến đổi Haar wavelet đơn giản trong JS thuần                           | ⬜ Chưa     |
-| **Hash generation**       | Lượng tử hóa hệ số wavelet → hash nhị phân                                       | ⬜ Chưa     |
-| **Hamming distance**      | Tính khoảng cách Hamming giữa 2 hash                                              | ⬜ Chưa     |
-
----
-
-### Giai Đoạn 9: Polish & Deploy
-
-| Hạng mục              | Chi tiết                                                   | Tình trạng |
-| :---------------------- | :--------------------------------------------------------- | :---------: |
-| **Animations**         | Thêm micro-animations cho UI (fade in, progress bar, ...)  | ⬜ Chưa     |
-| **Error handling**     | Xử lý lỗi: file không phải ảnh, ảnh quá lớn, ...          | ⬜ Chưa     |
-| **Performance**        | Optimize cho ảnh lớn (resize trước khi xử lý)              | ⬜ Chưa     |
-| **Build & Deploy**     | `npm run build` → Deploy lên GitHub Pages hoặc Vercel      | ⬜ Chưa     |
-
----
-
-## 5. Những Thách Thức Kỹ Thuật Dự Kiến
-
-| # | Thách thức                                    | Giải pháp dự kiến                                                                           |
-| - | :-------------------------------------------- | :------------------------------------------------------------------------------------------ |
-| 1 | **Chọn loại wavelet phù hợp**                | Mặc định dùng `haar` (đơn giản, phổ biến). Phần nâng cao có thể thử `db2`, `sym2`, `coif1` |
-| 2 | **Kích thước hash khác nhau**                 | Chuẩn hóa tất cả ảnh về cùng kích thước (`256x256`) trước khi DWT                          |
-| 3 | **Chọn ngưỡng Hamming**                       | Dùng ROC Curve để chọn ngưỡng tối ưu (Youden's index)                                      |
-| 4 | **Wavelet trong JavaScript**                  | Implement Haar wavelet thủ công (không có thư viện pywt cho JS)                             |
-| 5 | **Hiệu năng xử lý ảnh lớn trên browser**     | Resize ảnh về `256x256` trước khi xử lý wavelet trong JS                                   |
-
----
-
-## 6. Hướng Dẫn Chạy & Kiểm Tra
-
-### 6.1. Phần Notebook
-
-```bash
-# Cài đặt thư viện
-pip install pywt opencv-python numpy matplotlib scikit-learn
-
-# Mở notebook
-cd notebooks
-jupyter notebook lab4_wavelet_hashing.ipynb
-```
-
-### 6.2. Phần Web App
-
-```bash
-# Cài đặt dependencies
-cd web
-npm install
-
-# Chạy dev server
-npm run dev
-# → Mở http://localhost:5173
-
-# Build production
-npm run build
-```
-
----
-
-## 7. Timeline Dự Kiến
-
-| Ngày | Công việc                                    |
-| :--- | :------------------------------------------- |
-| 1    | Setup project + chuẩn bị dữ liệu ảnh        |
-| 2    | Implement DWT + Hash + Hamming (Notebook)    |
-| 3    | Đánh giá metrics + ROC Curve (Notebook)      |
-| 4    | Setup Web App + Giao diện                    |
-| 5    | Logic wavelet trong JS + Polish + Deploy     |
-
----
-
-> 📌 **LƯU Ý:** Tài liệu này là "bản thiết kế" cho toàn bộ dự án. AI phải tuân theo thứ tự các giai đoạn khi triển khai. Nếu gặp vấn đề, cập nhật tình trạng trong bảng và thông báo cho người dùng.
+1. **Truyền Dữ Liệu Không Trạng Thái (Stateless Data Transfer):** Ảnh không bao giờ được lưu lại thành file `.jpg` trên server. Toàn bộ quá trình từ upload -> process -> response đều bằng chuỗi Base64 lưu trong RAM. Rất phù hợp với kiến trúc Serverless (Vercel).
+2. **Xử Lý Nhiễu Bằng Median:** Việc so sánh các hệ số DWT với giá trị Median giúp hệ thống chống chịu tốt trước những thay đổi về độ sáng, độ tương phản của ảnh.
+3. **CORS & Pathing:** File `index.py` được đặt trong thư mục `api/` để Vercel tự nhận diện đó là Serverless function. Code local cần có block `@app.route('/')` để serve frontend file.
+4. **Resampling Filter:** Dùng `Image.Resampling.LANCZOS` để chất lượng ảnh giảm kích thước (downscale) được sắc nét nhất trước khi chạy thuật toán Wavelet.

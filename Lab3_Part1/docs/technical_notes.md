@@ -31,4 +31,21 @@ Việc sai số nhỏ này là đặc tính kinh điển của các hệ thống
 ---
 
 ## 2. Vì sao DWT Level 4 (256 bits) lại ưu việt hơn?
-(Đang cập nhật...)
+Trong hệ thống Wavelet Studio, với kích thước ảnh đầu vào được chuẩn hóa là **256x256 pixels**, biến đổi Wavelet được cấu hình chạy phân rã ở **Level 4** (DWT_LEVEL = 4). Điều này đồng nghĩa với việc các ma trận hệ số thu được ở lớp cuối cùng (cA, cH, cV, cD) sẽ có kích thước là **16x16 pixels** (tương đương 256 bits cho mỗi sub-band, và 1024 bits tổng cộng cho toàn bộ mã băm).
+
+Sự lựa chọn này không phải là ngẫu nhiên, mà mang lại sự cân bằng tối ưu về 3 mặt:
+
+### a) Điểm rơi hoàn hảo giữa "Bao quát" và "Chi tiết"
+Mỗi lần phân rã Wavelet (tăng 1 Level), bức ảnh được giảm một nửa kích thước và các chi tiết nhỏ (nhiễu, nếp nhăn, lá cây nhỏ) sẽ bị lọc bỏ vào các sub-band chi tiết.
+- Nếu dừng lại ở **Level 2 hoặc 3 (64x64 hoặc 32x32)**: Mã băm còn chứa quá nhiều chi tiết vụn vặt. Nếu ảnh gốc bị làm mờ, bị nén hoặc đóng logo nhỏ, các chi tiết này sẽ làm thay đổi lượng lớn bit, khiến thuật toán đánh giá ảnh "KHÔNG GIỐNG NHAU" (tính bao dung kém).
+- Tại **Level 4 (16x16)**: Bức ảnh đã được cô đọng lại thành những mảng hình khối cốt lõi (ví dụ: đâu là trời, đâu là đất, đâu là khối nhà). Sự xê dịch pixel, mờ ảnh, nhiễu hạt gần như không tác động đến hình thái 16x16 này. Nhờ đó, tính kháng nhiễu (Robustness) đạt mức cao nhất.
+
+### b) Loại trừ hiện tượng "Chỉ tay vào hươu bảo ngựa" (False Positive)
+Vậy tại sao không phân rã tiếp xuống **Level 5 (8x8 = 64 bits)** hay sâu hơn để tăng tính kháng nhiễu?
+- Ở kích thước 8x8, thông tin hình ảnh bị bào mòn quá mức. Hai bức hình phong cảnh hoàn toàn khác nhau (nhưng cùng có bầu trời ở trên, mặt đất ở dưới) có thể sẽ cho ra ma trận 8x8 y hệt nhau.
+- Level 4 (16x16 = 256 bits cho mỗi đặc trưng) cung cấp đủ độ phân giải không gian (Spatial Resolution) để có thể phân biệt rõ ràng hai bức ảnh tuy có chung bố cục nhưng khác biệt về đối tượng.
+
+### c) Tối ưu hóa hiệu năng tính toán (Performance)
+Khi xây dựng tính năng "Image Search" – quét một ảnh mới so với hàng ngàn ảnh trong Cơ sở dữ liệu:
+- Mảng băm 1024 bits (tổng hợp từ 4 sub-bands 256 bits) là một độ dài lý tưởng. Quá trình tính **Khoảng cách Hamming** trên mảng 1024 phần tử diễn ra chỉ trong chớp mắt (tính bằng milli-giây).
+- Nếu dùng Level thấp hơn (ví dụ Level 2), mã băm sẽ dài hơn 16.000 bits. Quá trình tính toán với CSDL khổng lồ sẽ gây nghẽn cổ chai và độ trễ phản hồi không đáp ứng được tính thời gian thực của ứng dụng Web.
