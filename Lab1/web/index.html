@@ -3,121 +3,202 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Basics Studio · Chương 1</title>
+  <title>Image Basics Studio · Lab 1</title>
+  
+  <!-- Google Fonts: Outfit cho Tiêu đề, Inter cho nội dung -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
   <!-- Màn hình chờ tải OpenCV.js -->
   <div id="loadingScreen" class="loading-screen">
-    <div class="spinner"></div>
-    <p class="loading-text">Đang tải thư viện OpenCV.js…</p>
-    <p class="loading-sub">WebAssembly đang khởi động, vui lòng đợi trong giây lát</p>
+    <div class="loader-ring"></div>
+    <div class="loader-content">
+      <p class="loading-text">Khởi tạo hệ thống</p>
+      <p class="loading-sub">Đang tải WebAssembly (OpenCV.js)...</p>
+    </div>
   </div>
 
   <div id="app" class="app hidden">
-
     <!-- HEADER -->
     <header class="header glass">
-      <div class="header-left">
-        <span class="logo-mark">01</span>
-        <div>
+      <div class="header-brand">
+        <div class="logo-mark">01</div>
+        <div class="header-titles">
           <h1>Image Basics Studio</h1>
-          <p class="subtitle">Chương 1 · Tổng quan Thị giác máy tính &amp; Xử lý ảnh</p>
+          <p class="subtitle">Thị giác máy tính &amp; Xử lý ảnh</p>
         </div>
       </div>
-      <div class="header-right">
-        <label class="upload-btn">
+      
+      <nav class="header-nav">
+        <a href="#" class="nav-link active">Công cụ</a>
+        <a href="https://github.com/NguyenHoangLe0701/Image-Processing-Lab" target="_blank" class="nav-link">GitHub Repo</a>
+        <a href="#" class="nav-link">Tài liệu</a>
+      </nav>
+
+      <div class="header-actions">
+        <label class="btn-primary">
           <input type="file" id="fileInput" accept="image/*" hidden />
-          📂 Tải ảnh lên
+          <i class="ph-bold ph-upload-simple"></i>
+          <span>Tải ảnh lên</span>
         </label>
       </div>
     </header>
 
-    <!-- TAB NAV: 3 module bài tập -->
-    <nav class="tabs glass">
-      <button class="tab-btn active" data-tab="colorspace">🎨 Không gian màu</button>
-      <button class="tab-btn" data-tab="croprezise">✂️ Cắt &amp; Resize</button>
-      <button class="tab-btn" data-tab="draw">✏️ Vẽ hình &amp; Chữ</button>
-    </nav>
+    <main class="main-layout">
+      <!-- SIDEBAR TOOLS -->
+      <aside class="sidebar glass">
+        <nav class="tabs">
+          <button class="tab-btn active" data-tab="colorspace">
+            <i class="ph-bold ph-palette"></i>
+            <span>Không gian màu</span>
+          </button>
+          <button class="tab-btn" data-tab="croprezise">
+            <i class="ph-bold ph-crop"></i>
+            <span>Cắt &amp; Resize</span>
+          </button>
+          <button class="tab-btn" data-tab="draw">
+            <i class="ph-bold ph-pen-nib"></i>
+            <span>Vẽ hình &amp; Chữ</span>
+          </button>
+        </nav>
 
-    <main class="main">
-
-      <!-- Cột trái: ảnh gốc luôn hiển thị -->
-      <section class="panel glass panel-source">
-        <h2 class="panel-title">Ảnh gốc</h2>
-        <div class="canvas-wrap" id="sourceWrap">
-          <canvas id="canvasSource"></canvas>
-          <div class="empty-state" id="emptyState">
-            <p>👆 Hãy tải một ảnh lên để bắt đầu</p>
+        <div class="tools-container">
+          <!-- ====== TAB: Không gian màu ====== -->
+          <div class="tab-content active" data-tab-content="colorspace">
+            <h3 class="tool-title">Không gian màu</h3>
+            <p class="hint">Chọn không gian màu để xem ảnh được biến đổi tức thì bằng <code>cv.cvtColor()</code>.</p>
+            <div class="btn-grid" id="colorSpaceButtons">
+              <button class="chip active" data-cs="RGB">RGB (gốc)</button>
+              <button class="chip" data-cs="GRAY">Grayscale</button>
+              <button class="chip" data-cs="HSV">HSV</button>
+              <button class="chip" data-cs="LAB">LAB</button>
+            </div>
           </div>
-          <!-- overlay dùng cho crop kéo-thả -->
-          <div class="crop-box" id="cropBox" hidden></div>
+
+          <!-- ====== TAB: Crop & Resize ====== -->
+          <div class="tab-content" data-tab-content="croprezise">
+            <h3 class="tool-title">Cắt &amp; Resize</h3>
+            <p class="hint">Kéo chuột trên <strong>ảnh gốc</strong> để chọn vùng cắt (ROI), sau đó chỉnh tỉ lệ resize.</p>
+            
+            <div class="action-group">
+              <button class="action-btn" id="btnCrop">
+                <i class="ph-bold ph-scissors"></i> Cắt theo vùng chọn
+              </button>
+              <button class="action-btn secondary" id="btnResetCrop">
+                <i class="ph-bold ph-arrow-counter-clockwise"></i> Hoàn tác
+              </button>
+            </div>
+
+            <div class="control-card">
+              <div class="slider-header">
+                <label for="resizeSlider">Tỉ lệ kích thước</label>
+                <span class="value-badge" id="resizeValue">100%</span>
+              </div>
+              <input type="range" id="resizeSlider" min="10" max="200" value="100" step="5" />
+            </div>
+          </div>
+
+          <!-- ====== TAB: Vẽ hình & Chữ ====== -->
+          <div class="tab-content" data-tab-content="draw">
+            <h3 class="tool-title">Vẽ &amp; Chú thích</h3>
+            <p class="hint">Chọn công cụ và kéo chuột trên <strong>ảnh gốc</strong>. Nhập văn bản để chèn chữ.</p>
+            
+            <div class="btn-grid" id="drawToolButtons">
+              <button class="chip active" data-tool="line"><i class="ph-bold ph-line-segment"></i>Đường thẳng</button>
+              <button class="chip" data-tool="circle"><i class="ph-bold ph-circle"></i>Hình tròn</button>
+              <button class="chip" data-tool="rect"><i class="ph-bold ph-rectangle"></i>Chữ nhật</button>
+            </div>
+
+            <div class="control-card">
+              <div class="control-row">
+                <label>Màu sắc</label>
+                <input type="color" id="drawColor" value="#06b6d4" />
+              </div>
+              <div class="control-row-col">
+                <label>Độ dày nét vẽ</label>
+                <input type="range" id="drawThickness" min="1" max="10" value="3" />
+              </div>
+            </div>
+
+            <div class="control-card input-group">
+              <input type="text" id="textInput" placeholder="Nhập chữ cần chèn..." maxlength="60" />
+              <button class="action-btn icon-only" id="btnAddText" title="Chèn chữ">
+                <i class="ph-bold ph-text-t"></i>
+              </button>
+            </div>
+
+            <button class="action-btn secondary full-width" id="btnClearDraw">
+              <i class="ph-bold ph-eraser"></i> Xoá toàn bộ nét vẽ
+            </button>
+          </div>
         </div>
-        <img id="imgSrc" hidden alt="ảnh nguồn ẩn để OpenCV.js đọc" />
-      </section>
+      </aside>
 
-      <!-- Cột phải: kết quả + điều khiển theo tab -->
-      <section class="panel glass panel-result">
-        <h2 class="panel-title">Kết quả</h2>
-        <div class="canvas-wrap">
-          <canvas id="canvasOutput"></canvas>
+      <!-- WORKSPACE -->
+      <section class="workspace">
+        <!-- Cột trái: ảnh gốc -->
+        <div class="panel glass panel-source">
+          <div class="panel-header">
+            <i class="ph-bold ph-image"></i>
+            <h2 class="panel-title">Ảnh gốc</h2>
+          </div>
+          <div class="canvas-wrap" id="sourceWrap">
+            <canvas id="canvasSource"></canvas>
+            <div class="empty-state" id="emptyState">
+              <div class="empty-icon-wrap">
+                <i class="ph-duotone ph-upload-simple"></i>
+              </div>
+              <p>Chưa có hình ảnh nào</p>
+              <span>Vui lòng tải ảnh lên để bắt đầu</span>
+            </div>
+            <div class="crop-box" id="cropBox" hidden></div>
+          </div>
+          <img id="imgSrc" hidden alt="ảnh nguồn ẩn để OpenCV.js đọc" />
         </div>
 
-        <!-- ====== TAB: Không gian màu ====== -->
-        <div class="tab-content active" data-tab-content="colorspace">
-          <p class="hint">Chọn một không gian màu để xem ảnh được biến đổi tức thì bằng <code>cv.cvtColor()</code>.</p>
-          <div class="btn-group" id="colorSpaceButtons">
-            <button class="chip active" data-cs="RGB">RGB (gốc)</button>
-            <button class="chip" data-cs="GRAY">Grayscale</button>
-            <button class="chip" data-cs="HSV">HSV</button>
-            <button class="chip" data-cs="LAB">LAB</button>
+        <!-- Cột phải: kết quả -->
+        <div class="panel glass panel-result">
+          <div class="panel-header">
+            <i class="ph-bold ph-magic-wand"></i>
+            <h2 class="panel-title">Kết quả</h2>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="canvasOutput"></canvas>
           </div>
         </div>
-
-        <!-- ====== TAB: Crop & Resize ====== -->
-        <div class="tab-content" data-tab-content="croprezise">
-          <p class="hint">Kéo chuột trên <strong>ảnh gốc</strong> để chọn vùng cắt (ROI), sau đó chỉnh tỉ lệ resize.</p>
-          <button class="action-btn" id="btnCrop">✂️ Cắt theo vùng đã chọn</button>
-          <button class="action-btn secondary" id="btnResetCrop">↺ Reset về ảnh gốc</button>
-
-          <div class="slider-row">
-            <label for="resizeSlider">Tỉ lệ resize: <span id="resizeValue">100%</span></label>
-            <input type="range" id="resizeSlider" min="10" max="200" value="100" step="5" />
-          </div>
-        </div>
-
-        <!-- ====== TAB: Vẽ hình & Chữ ====== -->
-        <div class="tab-content" data-tab-content="draw">
-          <p class="hint">Chọn công cụ rồi kéo chuột trên <strong>ảnh gốc</strong> để vẽ; hoặc nhập văn bản và bấm "Chèn chữ".</p>
-          <div class="btn-group" id="drawToolButtons">
-            <button class="chip active" data-tool="line">📏 Đường thẳng</button>
-            <button class="chip" data-tool="circle">⚪ Hình tròn</button>
-            <button class="chip" data-tool="rect">▭ Chữ nhật</button>
-          </div>
-
-          <div class="draw-controls-row">
-            <label>Màu nét:
-              <input type="color" id="drawColor" value="#22d3ee" />
-            </label>
-            <label>Độ dày:
-              <input type="range" id="drawThickness" min="1" max="10" value="3" />
-            </label>
-          </div>
-
-          <div class="text-row">
-            <input type="text" id="textInput" placeholder="Nhập văn bản chèn lên ảnh…" maxlength="60" />
-            <button class="action-btn" id="btnAddText">➕ Chèn chữ</button>
-          </div>
-
-          <button class="action-btn secondary" id="btnClearDraw">↺ Xoá nét vẽ</button>
-        </div>
-
       </section>
     </main>
 
-    <footer class="footer">
-      <p>Image Basics Studio — xử lý ảnh hoàn toàn trên trình duyệt (client-side), không lưu trữ dữ liệu của bạn.</p>
+    <footer class="site-footer glass">
+      <div class="footer-content">
+        <div class="footer-col brand-col">
+          <div class="logo-mark small">01</div>
+          <p>Ứng dụng web trực quan hóa thuật toán xử lý ảnh cơ bản, chạy hoàn toàn trên client-side bằng WebAssembly.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Tài nguyên</h4>
+          <a href="#">Tài liệu hướng dẫn</a>
+          <a href="#">Bài tập Lab 1</a>
+          <a href="https://github.com/NguyenHoangLe0701/Image-Processing-Lab" target="_blank">Mã nguồn GitHub</a>
+        </div>
+        <div class="footer-col">
+          <h4>Công nghệ</h4>
+          <a href="https://vitejs.dev/" target="_blank">Vite</a>
+          <a href="https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html" target="_blank">OpenCV.js</a>
+          <a href="#">HTML5 Canvas</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Image Basics Studio. Không thu thập dữ liệu cá nhân.</p>
+      </div>
     </footer>
   </div>
 
