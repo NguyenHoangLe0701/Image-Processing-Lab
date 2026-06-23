@@ -152,13 +152,13 @@
           </div>
           <div class="canvas-wrap" id="sourceWrap">
             <canvas id="canvasSource"></canvas>
-            <div class="empty-state" id="emptyState">
+            <label class="empty-state" id="emptyState" for="fileInput" style="cursor: pointer; transition: transform 0.2s ease;">
               <div class="empty-icon-wrap">
                 <i class="ph-duotone ph-upload-simple"></i>
               </div>
               <p>Chưa có hình ảnh nào</p>
-              <span>Vui lòng tải ảnh lên để bắt đầu</span>
-            </div>
+              <span>Nhấp vào đây hoặc nút trên cùng để tải ảnh</span>
+            </label>
             <div class="crop-box" id="cropBox" hidden></div>
           </div>
           <img id="imgSrc" hidden alt="ảnh nguồn ẩn để OpenCV.js đọc" />
