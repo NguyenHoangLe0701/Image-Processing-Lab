@@ -82,7 +82,11 @@ Mở Jupyter Notebook hoặc VS Code, chạy lần lượt từng cell trong **`
 
 ## 5. Trải Nghiệm Trực Tiếp Web App (Live Demo)
 
-**Chạy Web App Local:**
+Bạn có thể quét mã QR dưới đây hoặc truy cập trực tiếp vào link dự án đã deploy để trải nghiệm Web App:
+
+![Mã QR truy cập Web App](QR.jpg)
+
+### 5.1. Chạy Web App Local
 
 1. Di chuyển vào thư mục web: `cd web`
 2. Cài package: `npm install`
@@ -91,6 +95,18 @@ Mở Jupyter Notebook hoặc VS Code, chạy lần lượt từng cell trong **`
 
 Web App cho phép tải ảnh lên và xem trực quan, thời gian thực các phép biến đổi: chuyển không gian màu, crop/resize bằng kéo-thả, và vẽ hình/chữ chú thích — đúng các thao tác đã học trong notebook nhưng ở dạng tương tác.
 
+### 5.2. Hướng dẫn Deploy Web App lên Vercel
+
+Dự án này sử dụng Vite, nên việc đưa lên Vercel cực kỳ đơn giản:
+
+1. **Đẩy code lên GitHub:** Chắc chắn rằng repository `Image-Processing-Lab` của bạn đã được cập nhật mới nhất.
+2. **Import vào Vercel:** Truy cập [Vercel](https://vercel.com/), đăng nhập bằng GitHub, chọn **Add New... > Project** và import repository này.
+3. **Cấu hình thư mục gốc (Rất quan trọng):** 
+   - Trong phần cấu hình trước khi deploy, tìm mục **Root Directory**.
+   - Nhấn **Edit** và chọn đúng thư mục chứa web là: `Lab1/web`.
+4. **Cấu hình Build:** Vercel sẽ tự động nhận dạng Framework là **Vite**. Các thông số `Build Command` (`npm run build`) và `Output Directory` (`dist`) cứ giữ nguyên mặc định.
+5. **Deploy:** Nhấn nút **Deploy**. Sau khi hoàn tất, Vercel sẽ tạo cho bạn một đường link public (ví dụ: `your-project.vercel.app`) để truy cập online ở bất kỳ đâu.
+6. **Cập nhật QR:** Khi đã có link, bạn có thể tạo mã QR mới, đặt tên file là `QR.jpg` để trong thư mục `Lab1` và commit lên Github để cập nhật hình ảnh QR ở trên.
 ---
 
 ## 6. Kết Quả Đạt Được
