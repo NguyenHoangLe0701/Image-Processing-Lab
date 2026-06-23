@@ -151,14 +151,15 @@
             <h2 class="panel-title">Ảnh gốc</h2>
           </div>
           <div class="canvas-wrap" id="sourceWrap">
-            <canvas id="canvasSource"></canvas>
-            <label class="empty-state" id="emptyState" for="fileInput" style="cursor: pointer; transition: transform 0.2s ease;">
-              <div class="empty-icon-wrap">
+            <!-- Khu vực Dropzone chuyên nghiệp -->
+            <label class="dropzone" id="emptyState" for="fileInput">
+              <div class="dropzone-icon">
                 <i class="ph-duotone ph-upload-simple"></i>
               </div>
-              <p>Chưa có hình ảnh nào</p>
-              <span>Nhấp vào đây hoặc nút trên cùng để tải ảnh</span>
+              <h3>Tải ảnh lên</h3>
+              <p>Kéo thả ảnh vào đây hoặc <span>Duyệt file</span></p>
             </label>
+            <canvas id="canvasSource"></canvas>
             <div class="crop-box" id="cropBox" hidden></div>
           </div>
           <img id="imgSrc" hidden alt="ảnh nguồn ẩn để OpenCV.js đọc" />
@@ -170,7 +171,14 @@
             <i class="ph-bold ph-magic-wand"></i>
             <h2 class="panel-title">Kết quả</h2>
           </div>
-          <div class="canvas-wrap">
+          <div class="canvas-wrap" id="resultWrap">
+            <div class="dropzone disabled" id="emptyResultState">
+              <div class="dropzone-icon">
+                <i class="ph-duotone ph-image-square"></i>
+              </div>
+              <h3>Chưa có kết quả</h3>
+              <p>Hãy tải ảnh lên để bắt đầu xử lý</p>
+            </div>
             <canvas id="canvasOutput"></canvas>
           </div>
         </div>

@@ -11,6 +11,7 @@ const imgSrc = document.getElementById('imgSrc');
 const canvasSource = document.getElementById('canvasSource');
 const canvasOutput = document.getElementById('canvasOutput');
 const emptyState = document.getElementById('emptyState');
+const emptyResultState = document.getElementById('emptyResultState');
 const sourceWrap = document.getElementById('sourceWrap');
 const cropBoxEl = document.getElementById('cropBox');
 
@@ -110,6 +111,11 @@ imgSrc.onload = () => {
 
   hasImage = true;
   emptyState.style.display = 'none';
+  if (emptyResultState) emptyResultState.style.display = 'none';
+  
+  // Hiện canvas
+  canvasSource.style.display = 'block';
+  canvasOutput.style.display = 'block';
 
   // Reset trạng thái crop / draw khi tải ảnh mới
   cropRect = null;
