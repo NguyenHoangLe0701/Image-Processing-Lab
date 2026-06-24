@@ -1,0 +1,14 @@
+# render.yaml — Cấu hình deploy Flask API lên Render
+# Docs: https://docs.render.com/blueprint-spec
+
+services:
+  - type: web
+    name: neuramatch-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+    plan: free
+    autoDeploy: true
