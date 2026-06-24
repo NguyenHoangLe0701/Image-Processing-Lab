@@ -2,7 +2,14 @@
 
 > Bài thực hành 5 — Xử lý ảnh
 
+<div align="center">
+  <img src="QR.jpg" alt="Mã QR trải nghiệm ứng dụng" width="250" />
+  <p><em>Quét mã QR bên trên để truy cập và trải nghiệm ứng dụng NeuraMatch Studio trên điện thoại của bạn!</em></p>
+</div>
+
 Ứng dụng web so khớp ảnh (Photo Matching) sử dụng kiến trúc **Siamese Network** kết hợp **CNN (ResNet18)** và **Contrastive Loss**, xây dựng bằng PyTorch.
+
+
 
 ## Cấu trúc dự án
 
